@@ -181,3 +181,33 @@ pub(crate) fn float_digits(text: &str) -> Option<u8> {
         None
     }
 }
+
+/// Handle a `ParserResult` by combining the errors into the `$errors` and returning from the
+/// enclosing scope if necessary.
+macro_rules! handle {
+    ($errors:ident, $call:expr) => {
+        match $call {
+            Ok((res, w)) => {
+                combine_errors(&mut $errors, w);
+                res
+            }
+            Err(errs) => {
+                combine_errors(&mut $errors, errs);
+                return Err($errors);
+            }
+        }
+    };
+    (single $errors:ident, $call:expr) => {
+        match $call {
+            Ok(res) => res,
+            Err(err) => {
+                combine_error(&mut $errors, err);
+                return Err($errors);
+            }
+        }
+    };
+    (fail $errors:ident, $error:expr) => {
+        combine_error(&mut $errors, $error);
+        return Err($errors);
+    };
+}

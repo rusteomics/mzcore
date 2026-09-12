@@ -3,6 +3,9 @@
 use mzcv as _;
 use num_traits as _; // Needed to not get too low versions when testing with minimal versions
 
+#[macro_use]
+mod helper_functions;
+
 #[cfg(test)]
 mod fragmentation_tests;
 
@@ -12,7 +15,6 @@ pub mod annotation;
 /// Contains all things related to fragments and fragmentation.
 pub mod fragment;
 pub mod glycan;
-mod helper_functions;
 mod modification;
 mod monosaccharide;
 pub mod mzspeclib;

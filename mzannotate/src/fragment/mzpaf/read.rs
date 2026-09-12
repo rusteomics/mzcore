@@ -7,6 +7,7 @@ use std::{
 
 use context_error::*;
 use mzcore::{
+    ParserResult,
     chemistry::{
         AmbiguousMolecule, ELEMENT_PARSE_LIST, MolecularCharge, MolecularFormula, Molecule,
         NeutralLoss, OutputMolecularFormula, SatelliteLabel, StructuralFormula,
@@ -66,30 +67,45 @@ impl Fragment<OutputMolecularFormula> {
         ontologies: &Ontologies,
         interpretation: &[(NonZeroU32, AnalyteTarget)],
     ) -> Result<Vec<Self>, BoxedError<'a, BasicKind>> {
-        parse_intermediate_representation(base_context, line, range, ontologies).and_then(
-            |annotations| {
+        parse_intermediate_representation::<false>(base_context, line, range, ontologies)
+            .map_err(|mut err| err.pop().unwrap())
+            .and_then(|(annotations, _)| {
                 annotations
                     .into_iter()
                     .map(|a| a.into_fragment(interpretation, base_context))
                     .collect()
-            },
-        )
+            })
     }
 }
+
+// TODO: build validator
+// - [x] Correct order for well known losses
+// - [x] Neutral losses/gains in alphabetic order
+// - [x] [ ] [ ] No 1 before neutral losses/gains, before isotopes (no +1i), and before charge
+//   moieties (no [M+1Na])
+// - [ ] only one analyte not 1@
+// - [ ] Provided peptide guess for unknown ions not longer than needed
+// - [ ] No internal ions of length 1 (has to be immonium)
+// - [ ] Only use lowest possible identical internal ion (page 11)
+// - [ ] Charge moieties in alphanumeric order
+// - [ ] No charge 0 (maybe talk about this for decharged matching?)
+// - [ ] Multiple annotations have to be ordered by confidence (high first), and if one has a
+//   confidence all have to have a confidence
 
 /// Parse a mzPAF line into the internal representation, see [`parse_mz_paf`] for more information.
 /// # Errors
 /// When the annotation does not follow the format.
-fn parse_intermediate_representation<'a>(
+fn parse_intermediate_representation<'a, const STRICT: bool>(
     base_context: &Context<'a>,
     line: &'a str,
     range: Range<usize>,
     ontologies: &Ontologies,
-) -> Result<Vec<PeakAnnotation>, BoxedError<'a, BasicKind>> {
+) -> ParserResult<'a, Vec<PeakAnnotation>, BasicKind> {
     let mut annotations = Vec::new();
 
     // Parse first
-    let (mut range, a) = parse_annotation(base_context, line, range, ontologies)?;
+    let ((mut range, a), mut errors) =
+        parse_annotation::<STRICT>(base_context, line, range, ontologies)?;
     annotations.push(a);
 
     // Parse any following
@@ -97,57 +113,72 @@ fn parse_intermediate_representation<'a>(
         if line.as_bytes().get(range.start_index()).copied() == Some(b',') {
             range = range.add_start(1_usize);
         } else {
-            return Err(BoxedError::new(
+            return Err(vec![BoxedError::new(
                 BasicKind::Error,
                 "Invalid mzPAF annotation delimiter",
                 "Different mzPAF annotations should be separated with commas ','.",
                 Context::default()
                     .lines(0, line)
                     .add_highlight((0, range.start_index(), 1)),
-            ));
+            )]);
         }
-        let (r, a) = parse_annotation(base_context, line, range, ontologies)?;
+        let ((r, a), additional_errors) =
+            parse_annotation::<STRICT>(base_context, line, range, ontologies)?;
+        errors.extend_from_slice(&additional_errors);
         range = r;
         annotations.push(a);
     }
 
-    Ok(annotations)
+    Ok((annotations, errors))
 }
 
 /// Parse a single mzPAF peak annotation.
 /// # Errors
 /// When the annotation does not follow the format.
-fn parse_annotation<'a>(
+fn parse_annotation<'a, const STRICT: bool>(
     base_context: &Context<'a>,
     line: &'a str,
     range: Range<usize>,
     ontologies: &Ontologies,
-) -> Result<(Range<usize>, PeakAnnotation), BoxedError<'a, BasicKind>> {
+) -> ParserResult<'a, (Range<usize>, PeakAnnotation), BasicKind> {
+    let mut errors = Vec::new();
     let (left_range, auxiliary) = if line.as_bytes().get(range.start_index()).copied() == Some(b'&')
     {
         (range.add_start(1_usize), true)
     } else {
         (range, false)
     };
-    let (left_range, analyte_number) = parse_analyte_number(base_context, line, left_range)?;
-    let (left_range, ion) = parse_ion(base_context, line, left_range, ontologies)?;
-    let (left_range, neutral_losses) = parse_neutral_loss(base_context, line, left_range)?;
-    let (left_range, isotopes) = parse_isotopes(base_context, line, left_range)?;
-    let (left_range, adduct_type) = parse_adduct_type(base_context, line, left_range)?;
-    let (left_range, charge) = parse_charge(base_context, line, left_range)?;
-    let (left_range, deviation) = parse_deviation(base_context, line, left_range)?;
-    let (left_range, confidence) = parse_confidence(base_context, line, left_range)?;
-    Ok((left_range, PeakAnnotation {
-        auxiliary,
-        analyte_number,
-        ion,
-        neutral_losses,
-        isotopes,
-        charge: adduct_type
-            .unwrap_or_else(|| MolecularCharge::proton(Charge::new::<e>(charge.value))),
-        deviation,
-        confidence,
-    }))
+    let (left_range, analyte_number) =
+        handle!(single errors, parse_analyte_number(base_context, line, left_range));
+    let (left_range, ion) =
+        handle!(single errors, parse_ion(base_context, line, left_range, ontologies));
+    let (left_range, neutral_losses) = handle!(
+        errors,
+        parse_neutral_loss::<STRICT>(base_context, line, left_range)
+    );
+    let (left_range, isotopes) =
+        handle!(single errors, parse_isotopes(base_context, line, left_range));
+    let (left_range, adduct_type) =
+        handle!(single errors, parse_adduct_type(base_context, line, left_range));
+    let (left_range, charge) = handle!(single errors, parse_charge(base_context, line, left_range));
+    let (left_range, deviation) =
+        handle!(single errors, parse_deviation(base_context, line, left_range));
+    let (left_range, confidence) =
+        handle!(single errors, parse_confidence(base_context, line, left_range));
+    Ok((
+        (left_range, PeakAnnotation {
+            auxiliary,
+            analyte_number,
+            ion,
+            neutral_losses,
+            isotopes,
+            charge: adduct_type
+                .unwrap_or_else(|| MolecularCharge::proton(Charge::new::<e>(charge.value))),
+            deviation,
+            confidence,
+        }),
+        errors,
+    ))
 }
 
 /// An mzPAF single peak annotation.
@@ -936,19 +967,21 @@ fn parse_ion<'a>(
 /// Parse a neutral loss from the string.
 /// # Errors
 /// If the a neutral loss is detected but is invalid.
-pub(in crate::fragment) fn parse_neutral_loss<'a>(
+pub(in crate::fragment) fn parse_neutral_loss<'a, const STRICT: bool>(
     base_context: &Context<'a>,
     line: &'a str,
     range: Range<usize>,
-) -> Result<(Range<usize>, Vec<NeutralLoss>), BoxedError<'a, BasicKind>> {
+) -> ParserResult<'a, (Range<usize>, Vec<NeutralLoss>), BasicKind> {
     let mut offset = 0;
+    let mut errors = Vec::new();
     let mut neutral_losses = Vec::new();
+    let mut neutral_loss_substrings = Vec::new();
     while let Some(c @ (b'-' | b'+')) = line.as_bytes().get(range.start_index() + offset).copied() {
         let mut amount = 1;
         let num_offset =
         // Parse leading number to detect how many times this loss occured
         if let Some(num) = next_number::<false, false, u16>(line, range.add_start(1 + offset)) {
-            amount = num.2.map_err(|err| {
+            amount = handle!(single errors, num.2.map_err(|err| {
                 BoxedError::new(
                     BasicKind::Error,
                     "Invalid mzPAF neutral loss leading amount",
@@ -962,7 +995,19 @@ pub(in crate::fragment) fn parse_neutral_loss<'a>(
                         range.start_index() + 1 + offset + num.0,
                     )),
                 )
-            })?;
+            }));
+            if STRICT && amount == 1 {
+                errors.push(BoxedError::new(
+                    BasicKind::Warning,
+                    "Invalid mzPAF neutral loss leading amount",
+                    "If the amount is 1 it should be left out",
+                    base_context.clone().add_highlight((
+                        0,
+                        range.start_index() + 1 + offset,
+                        range.start_index() + 1 + offset + num.0,
+                    )),
+                ));
+            }
             offset += num.0;
             num.0
         } else {
@@ -972,23 +1017,29 @@ pub(in crate::fragment) fn parse_neutral_loss<'a>(
         if line[range.start_index() + 1 + offset..].starts_with('i')
             || line[range.start_index() + 1 + offset..].starts_with("[M+")
         {
-            return Ok((range.add_start(offset - num_offset), neutral_losses));
+            return Ok((
+                (range.add_start(offset - num_offset), neutral_losses),
+                errors,
+            ));
         }
 
         if line.as_bytes().get(range.start_index() + 1 + offset).copied() == Some(b'[') {
-            let last = end_of_enclosure(line, range.start_index() + 2 + offset, b'[', b']')
-                .ok_or_else(|| {
-                    BoxedError::new(
-                        BasicKind::Error,
-                        "Unknown mzPAF named neutral loss",
-                        "Opening bracket for neutral loss name was not closed",
-                        base_context.clone().add_highlight((
-                            0,
-                            range.start_index() + 1 + offset,
-                            1,
-                        )),
-                    )
-                })?;
+            let last = handle!(single errors,
+                end_of_enclosure(line, range.start_index() + 2 + offset, b'[', b']').ok_or_else(
+                    || {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Unknown mzPAF named neutral loss",
+                            "Opening bracket for neutral loss name was not closed",
+                            base_context.clone().add_highlight((
+                                0,
+                                range.start_index() + 1 + offset,
+                                1,
+                            )),
+                        )
+                    }
+                )
+            );
             let first = range.start_index() + 2 + offset;
             let name = &line[first..last];
 
@@ -1003,19 +1054,24 @@ pub(in crate::fragment) fn parse_neutral_loss<'a>(
                     b'-' => NeutralLoss::Loss(amount, formula),
                     _ => unreachable!(),
                 });
+                if STRICT {
+                    neutral_loss_substrings.push(&line[first - 1..=last]);
+                }
             } else if let Ok(formula) = MolecularFormula::pro_forma_inner::<false, false>(
                 base_context,
                 line,
                 first - 1..=last,
             ) {
-                // Catches the case of a single isotope as formula
                 neutral_losses.push(match c {
                     b'+' => NeutralLoss::Gain(amount, formula),
                     b'-' => NeutralLoss::Loss(amount, formula),
                     _ => unreachable!(),
                 });
+                if STRICT {
+                    neutral_loss_substrings.push(&line[first - 1..=last])
+                }
             } else {
-                return Err(BoxedError::new(
+                errors.push(BoxedError::new(
                     BasicKind::Error,
                     "Unknown mzPAF named neutral loss",
                     "Unknown name",
@@ -1023,39 +1079,81 @@ pub(in crate::fragment) fn parse_neutral_loss<'a>(
                         .clone()
                         .add_highlight((0, offset - name.len() - 1, name.len())),
                 ));
+                return Err(errors);
             }
         } else {
             let first = range.start_index() + 1 + offset;
-            let last = line[first..]
-                .char_indices()
-                .take_while(|(_, c)| c.is_ascii_alphanumeric() || *c == '[' || *c == ']')
-                .last()
-                .ok_or_else(|| {
-                    BoxedError::new(
-                        BasicKind::Error,
-                        "Invalid mzPAF",
-                        "Empty neutral loss",
-                        base_context.clone().add_highlight((0, first..)),
-                    )
-                })?;
+            let last = handle!(single errors, line[first..]
+            .char_indices()
+            .take_while(|(_, c)| c.is_ascii_alphanumeric() || *c == '[' || *c == ']')
+            .last()
+            .ok_or_else(|| {
+                BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid mzPAF",
+                    "Empty neutral loss",
+                    base_context.clone().add_highlight((0, first..)),
+                )
+            }));
             let mut last = last.0 + last.1.len_utf8();
             if line[first..first + last].ends_with("[M") {
                 last -= 2; // Detect any adduct types which might otherwise sneak in
             }
-            let formula = MolecularFormula::pro_forma_inner::<false, false>(
+            let formula = handle!(single errors, MolecularFormula::pro_forma_inner::<false, false>(
                 base_context,
                 line,
                 first..first + last,
-            )?;
+            ));
+            if STRICT {
+                for (well_known_molecule, canonical_form) in [
+                    (molecular_formula!(N 1 H 3), "NH3"),
+                    (molecular_formula!(H 2 O 1), "H2O"),
+                    (molecular_formula!(C 1 O 1), "CO"),
+                    (molecular_formula!(C 1 O 2), "CO2"),
+                    (molecular_formula!(H 3 C 1 N 1 O 1), "HCONH2"),
+                    (molecular_formula!(H 2 C 1 O 2), "HCOOH"),
+                    (molecular_formula!(H 4 C 1 O 1 S 1), "CH4OS"),
+                    (molecular_formula!(S 1 O 3), "SO3"),
+                    (molecular_formula!(H 1 O 3 P 1), "HPO3"),
+                    (molecular_formula!(H 5 C 2 N 1 O 1 S 1), "C2H5NOS"),
+                    (molecular_formula!(H 4 C 2 O 2 S 1), "C2H4O2S"),
+                    (molecular_formula!(H 3 O 4 P 1), "H3PO4"),
+                ] {
+                    if formula == well_known_molecule && &line[first - 1..=last] != canonical_form {
+                        errors.push(BoxedError::new(
+                                BasicKind::Warning,
+                                "mzPAF neutral loss non canonical formula",
+                                format!("This well known neutral loss/gain should be written in the canonical form: '{canonical_form}'"),
+                                base_context.clone().add_highlight((0, first - 1..=last)),
+                            ));
+                    }
+                }
+            }
             neutral_losses.push(match c {
                 b'+' => NeutralLoss::Gain(amount, formula),
                 b'-' => NeutralLoss::Loss(amount, formula),
                 _ => unreachable!(),
             });
+            if STRICT {
+                neutral_loss_substrings.push(&line[first..first + last]);
+            }
             offset += 1 + last;
         }
     }
-    Ok((range.add_start(offset), neutral_losses))
+    // Check sorting
+    if STRICT && !neutral_loss_substrings.is_sorted() {
+        errors.push(BoxedError::new(
+            BasicKind::Warning,
+            "mzPAF neutral losses not sorted",
+            "The neutral losses/gains should be sorted alphabetically",
+            base_context.clone().add_highlight((
+                0,
+                range.start_index(),
+                range.start_index() + offset,
+            )),
+        ));
+    }
+    Ok(((range.add_start(offset), neutral_losses), errors))
 }
 
 /// The parsed isotopes. First the left range, then all found isotopes as the multiplier and isotope
@@ -1493,29 +1591,38 @@ static MZPAF_NAMED_MOLECULES: LazyLock<Vec<(&str, MolecularFormula)>> = LazyLock
 #[allow(clippy::missing_panics_doc)]
 fn neutral_loss() {
     assert_eq!(
-        parse_neutral_loss(&Context::default(), "-H2O", 0..4),
-        Ok((4..4, vec![NeutralLoss::Loss(
-            1,
-            molecular_formula!(H 2 O 1)
-        )]))
+        parse_neutral_loss::<false>(&Context::default(), "-H2O", 0..4),
+        Ok((
+            (4..4, vec![NeutralLoss::Loss(
+                1,
+                molecular_formula!(H 2 O 1)
+            )]),
+            Vec::new()
+        ))
     );
     assert_eq!(
-        parse_neutral_loss(&Context::default(), "+H2O", 0..4),
-        Ok((4..4, vec![NeutralLoss::Gain(
-            1,
-            molecular_formula!(H 2 O 1)
-        )]))
+        parse_neutral_loss::<false>(&Context::default(), "+H2O", 0..4),
+        Ok((
+            (4..4, vec![NeutralLoss::Gain(
+                1,
+                molecular_formula!(H 2 O 1)
+            )]),
+            Vec::new()
+        ))
     );
     assert_eq!(
-        parse_neutral_loss(&Context::default(), "+NH3", 0..4),
-        Ok((4..4, vec![NeutralLoss::Gain(
-            1,
-            molecular_formula!(N 1 H 3)
-        )]))
+        parse_neutral_loss::<false>(&Context::default(), "+NH3", 0..4),
+        Ok((
+            (4..4, vec![NeutralLoss::Gain(
+                1,
+                molecular_formula!(N 1 H 3)
+            )]),
+            Vec::new()
+        ))
     );
     assert_eq!(
-        parse_neutral_loss(&Context::default(), "/-0.0008", 0..8),
-        Ok((0..8, vec![]))
+        parse_neutral_loss::<false>(&Context::default(), "/-0.0008", 0..8),
+        Ok(((0..8, vec![]), Vec::new()))
     );
 }
 
@@ -1532,7 +1639,8 @@ fn parse_correctly() {
         ),
     )];
     let a = "y8^2/-0.0017";
-    let (_, parse_a) = parse_annotation(&Context::default(), a, 0..a.len(), &ontologies).unwrap();
+    let ((_, parse_a), _) =
+        parse_annotation::<false>(&Context::default(), a, 0..a.len(), &ontologies).unwrap();
     assert!(!parse_a.auxiliary);
     assert_eq!(parse_a.analyte_number, 1);
     assert_eq!(
@@ -1556,7 +1664,8 @@ fn parse_correctly() {
     );
 
     let b = "y8+i^2/0.0002";
-    let (_, parse_b) = parse_annotation(&Context::default(), b, 0..b.len(), &ontologies).unwrap();
+    let ((_, parse_b), _) =
+        parse_annotation::<false>(&Context::default(), b, 0..b.len(), &ontologies).unwrap();
     assert!(!parse_b.auxiliary);
     assert_eq!(parse_b.analyte_number, 1);
     assert_eq!(

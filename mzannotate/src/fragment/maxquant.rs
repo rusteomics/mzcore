@@ -142,11 +142,24 @@ fn parse_intermediate_representation<'a>(
     })?;
 
     // neutral losses
-    let (left, neutral_losses) = crate::fragment::mzpaf::parse_neutral_loss(
+    let ((left, neutral_losses), _warnings) = crate::fragment::mzpaf::parse_neutral_loss::<false>(
         base_context,
         line,
         num_range.start + length..num_range.end,
-    )?;
+    )
+    .map_err(|mut err| {
+        if err.len() == 1 {
+            err.pop().unwrap()
+        } else {
+            BoxedError::new(
+                BasicKind::Error,
+                "Invalid neutral losses",
+                "Multiple rror occured see underlying errors",
+                base_context.clone().add_highlight((0, num_range.clone())),
+            )
+            .add_underlying_errors(err)
+        }
+    })?;
 
     // charge
     let charge = if line[left.clone()].starts_with('(') && line[left.clone()].ends_with(')') {
