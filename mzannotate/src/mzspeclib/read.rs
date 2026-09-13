@@ -960,18 +960,36 @@ impl<'ontologies, R: BufRead> MzSpecLibTextParser<'ontologies, R> {
             Some(v) => {
                 let v = v.trim();
                 if !v.is_empty() && v != "?" {
-                    let annots = Fragment::mz_paf_inner(
+                    let (annots, _) = Fragment::mz_paf_inner::<false>(
                         &self.current_context().lines(0, buf),
                         buf,
                         field_offset..field_offset + v.len(),
                         self.ontologies,
                         &self.last_peptidoform_ion_set,
                     )
-                    .map_err(|e| {
-                        e.to_owned()
-                            .convert::<MzSpecLibErrorKind, BoxedError<'static, MzSpecLibErrorKind>>(
+                    .map_err(|mut errors| {
+                        if errors.len() == 1 {
+                            errors.pop().unwrap().to_owned().convert::<MzSpecLibErrorKind, BoxedError<'static, MzSpecLibErrorKind>>(
                                 |_| MzSpecLibErrorKind::MzPAF,
                             )
+                        } else {
+                            BoxedError::new(
+                                MzSpecLibErrorKind::MzPAF,
+                                "Invalid mzPAF annotation",
+                                "Multiple errors occured, see underlying errors",
+                                self.current_context().lines(0, buf).to_owned().add_highlight((
+                                    0,
+                                    field_offset,
+                                    v.len(),
+                                )),
+                            )
+                            .add_underlying_errors(errors.into_iter().map(|e| {
+                                e.to_owned()
+                                    .convert::<MzSpecLibErrorKind, BoxedError<'static, MzSpecLibErrorKind>>(
+                                        |_| MzSpecLibErrorKind::MzPAF,
+                                    )
+                            }))
+                        }
                     })?;
                     peak.annotations = annots;
                 }

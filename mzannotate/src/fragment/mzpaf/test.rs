@@ -1,4 +1,34 @@
+use std::sync::LazyLock;
+
 use crate::fragment::mzpaf::write::ToMzPAF;
+
+static BASIC_ANALYTES: LazyLock<[(std::num::NonZeroU32, crate::mzspeclib::AnalyteTarget); 2]> =
+    LazyLock::new(|| {
+        [
+            (
+                std::num::NonZeroU32::new(1).unwrap(),
+                crate::mzspeclib::AnalyteTarget::PeptidoformIon(
+                    mzcore::sequence::PeptidoformIon::pro_forma(
+                        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                        &mzcore::ontology::STATIC_ONTOLOGIES,
+                    )
+                    .unwrap()
+                    .0,
+                ),
+            ),
+            (
+                std::num::NonZeroU32::new(2).unwrap(),
+                crate::mzspeclib::AnalyteTarget::PeptidoformIon(
+                    mzcore::sequence::PeptidoformIon::pro_forma(
+                        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                        &mzcore::ontology::STATIC_ONTOLOGIES,
+                    )
+                    .unwrap()
+                    .0,
+                ),
+            ),
+        ]
+    });
 
 /// Create a parse test based on a given case and its name.
 #[macro_export]
@@ -7,50 +37,26 @@ macro_rules! mzpaf_test {
         #[test]
         fn $name() {
             use itertools::Itertools;
-            let basic_analytes = [
-                (
-                    std::num::NonZeroU32::new(1).unwrap(),
-                    $crate::mzspeclib::AnalyteTarget::PeptidoformIon(
-                        mzcore::sequence::PeptidoformIon::pro_forma(
-                            "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-                            &mzcore::ontology::STATIC_ONTOLOGIES,
-                        )
-                        .unwrap()
-                        .0,
-                    ),
-                ),
-                (
-                    std::num::NonZeroU32::new(2).unwrap(),
-                    $crate::mzspeclib::AnalyteTarget::PeptidoformIon(
-                        mzcore::sequence::PeptidoformIon::pro_forma(
-                            "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-                            &mzcore::ontology::STATIC_ONTOLOGIES,
-                        )
-                        .unwrap()
-                        .0,
-                    ),
-                ),
-            ];
             let res = $crate::fragment::Fragment::mz_paf(
                 $case,
                 &mzcore::ontology::STATIC_ONTOLOGIES,
-                &basic_analytes,
+                BASIC_ANALYTES.as_slice(),
             );
             match res {
                 Err(err) => {
                     println!("Failed: '{}'", $case);
-                    println!("{err}");
+                    println!("{err:?}");
                     panic!("Failed test")
                 }
-                Ok(res) => {
+                Ok((res, _)) => {
                     let back = res.iter().map(|a| a.to_mz_paf_string()).join(",");
                     let res_back = $crate::fragment::Fragment::mz_paf(
                         &back,
                         &mzcore::ontology::STATIC_ONTOLOGIES,
-                        &basic_analytes,
+                        BASIC_ANALYTES.as_slice(),
                     );
                     match res_back {
-                        Ok(res_back) => {
+                        Ok((res_back, _)) => {
                             let back_back = res_back.iter().map(|a| a.to_mz_paf_string()).join(",");
                             assert_eq!(
                                 back, back_back,
@@ -60,9 +66,54 @@ macro_rules! mzpaf_test {
                         }
                         Err(err) => {
                             println!("Failed: '{}' was exported as '{back}'", $case);
-                            println!("{err}");
+                            println!("{err:?}");
                             panic!("Failed test")
                         }
+                    }
+                }
+            };
+        }
+    };
+    (strict $case:literal, $name:ident) => {
+        #[test]
+        fn $name() {
+            let res = $crate::fragment::Fragment::mz_paf_strict(
+                $case,
+                &mzcore::ontology::STATIC_ONTOLOGIES,
+                BASIC_ANALYTES.as_slice(),
+            );
+            match res {
+                Err(err) => {
+                    println!("Failed: '{}'", $case);
+                    println!("{err:?}");
+                    panic!("Failed test")
+                }
+                Ok((_res, warnings)) => {
+                    if !warnings.is_empty() {
+                        println!("{warnings:?}");
+                        panic!("Failed test")
+                    }
+                }
+            };
+        }
+    };
+    (ne strict $case:literal, $name:ident) => {
+        #[test]
+        fn $name() {
+            let res = $crate::fragment::Fragment::mz_paf_strict(
+                $case,
+                &mzcore::ontology::STATIC_ONTOLOGIES,
+                BASIC_ANALYTES.as_slice(),
+            );
+            match res {
+                Err(err) => {
+                    println!("Failed: '{}'", $case);
+                    println!("{err:?}");
+                    panic!("Failed test")
+                }
+                Ok((_res, warnings)) => {
+                    if warnings.is_empty() {
+                        panic!("Example should have failed strict parsing")
                     }
                 }
             };
@@ -99,8 +150,10 @@ mzpaf_test!("0@y1{K}", spec_positive_16);
 mzpaf_test!("0@b2{LC[Carbamidomethyl]}", spec_positive_17);
 mzpaf_test!("0@b1{[Acetyl]-M}", spec_positive_18);
 mzpaf_test!("0@y4{M[Oxidation]ACK}-CH4OS[M+H+Na]^2", spec_positive_19a);
-mzpaf_test!("0@y44{M[Oxidation]ACK}-CH4OS[M+H+Na]^2", spec_positive_19b);
-mzpaf_test!("0@y444{M[Oxidation]ACK}-CH4OS[M+H+Na]^2", spec_positive_19c);
+mzpaf_test!(
+    "0@y14{M[Oxidation]ACKAAAAAAAAAA}-CH4OS[M+H+Na]^2",
+    spec_positive_19b
+);
 mzpaf_test!("m3:6", spec_positive_20);
 mzpaf_test!("b3-C2H3NO", spec_positive_21);
 mzpaf_test!("m3:6-CO", spec_positive_22);
@@ -198,3 +251,15 @@ mzpaf_test!(
     "1@p-[sidechain_Y]-[sidechain_M]^3,1@c26+2H-H2O1^3",
     hand_test_02
 );
+mzpaf_test!(ne strict "1@p-OH2", hand_test_03);
+mzpaf_test!(ne strict "1@p-PH3O4", hand_test_04);
+mzpaf_test!(ne strict "1@p-NH3-H2O", hand_test_05);
+mzpaf_test!(ne strict "1@p-1H2O", hand_test_06);
+mzpaf_test!(ne strict "1@p+1i", hand_test_07);
+mzpaf_test!(ne strict "1@p[M+1Na]", hand_test_08);
+mzpaf_test!(ne strict "0@y4{AAAAA}", hand_test_09);
+mzpaf_test!(ne strict "0@m4:5", hand_test_10);
+mzpaf_test!(ne strict "y4*0.2,y5*0.5", hand_test_11);
+mzpaf_test!(ne strict "y4*0.2,y5", hand_test_12);
+mzpaf_test!(ne strict "y5^0", hand_test_13);
+mzpaf_test!(ne strict "y5[M+Na+H]", hand_test_14);

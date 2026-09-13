@@ -71,18 +71,14 @@ impl Peptidoform<Linked> {
         let (pep, mut warnings) =
             PeptidoformIon::pro_forma_inner(base_context, line, range.clone(), ontologies)?;
         if let Some(pep) = pep.singular() {
-            if warnings.iter().any(|e| e.get_kind().is_error(())) {
-                Err(warnings)
-            } else {
-                Ok((pep, warnings))
-            }
+            Ok((pep, warnings))
         } else {
             combine_error(
                 &mut warnings,
                 BoxedError::new(
                     BasicKind::Error,
                     "Peptidoform ion found",
-                    "A linear peptidoform was expected but a cross linked peptidoform ion was found.",
+                    "A linear peptidoform was expected but a cross-linked peptidoform ion was found.",
                     base_context.clone().add_highlight((0, range)),
                 ),
             );
