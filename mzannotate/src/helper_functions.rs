@@ -89,6 +89,9 @@ pub(crate) fn next_number<const ALLOW_SIGN: bool, const FLOATING_POINT: bool, Nu
     line: &str,
     range: impl RangeBounds<usize>,
 ) -> Option<(usize, bool, Result<Number, Number::Err>)> {
+    if line.is_empty() {
+        return None;
+    }
     let start = range.start_index();
     let end = range.end_index(line.len() - 1);
     let mut positive = true;

@@ -35,7 +35,7 @@ use crate::{
 
 impl Fragment<OutputMolecularFormula> {
     /// Parse a [mzPAF](https://www.psidev.info/mzPAF) peak annotation line (can contain multiple annotations).
-    /// mzPAF version 1.0 is supported. Except for the SMILES constructs.
+    /// mzPAF version 1.0 is supported.
     ///
     /// # Errors
     /// When the annotation does not follow the format.
@@ -54,9 +54,8 @@ impl Fragment<OutputMolecularFormula> {
     }
 
     /// Parse a [mzPAF](https://www.psidev.info/mzPAF) peak annotation line (can contain multiple annotations).
-    /// mzPAF version 1.0 is supported. Except for the SMILES constructs. This is a validating
-    /// parser creating warnings for behaviour outside of a strict interpretation of the
-    /// specification.
+    /// mzPAF version 1.0 is supported. This is a validating parser creating warnings for behaviour
+    /// outside of a strict interpretation of the specification.
     ///
     /// # Errors
     /// When the annotation does not follow the format.

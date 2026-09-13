@@ -38,6 +38,7 @@ imgt = {path = "imgt", version = "0.2.0" }
 mzident = {path = "mzident", version = "0.2.1" }
 
 afl = ">0.15, <=0.18"
+arbitrary = "1.4"
 base64 = ">0.15, <=0.23"
 bincode = { version = "2.0", features = ["serde"] }
 chrono = "0.4"

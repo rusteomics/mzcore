@@ -2,13 +2,11 @@
 use afl::*;
 
 fn main() {
-    fuzz!(|data: &[u8]| {
-        if let Ok(s) = std::str::from_utf8(data) {
-            let _unused = mzcore::sequence::Peptidoform::sloppy_pro_forma(
-                s,
-                &mzcore::ontology::STATIC_ONTOLOGIES,
-                &mzcore::sequence::SloppyParsingParameters::default(),
-            );
-        }
+    fuzz!(|data: &str| {
+        let _unused = mzcore::sequence::Peptidoform::sloppy_pro_forma(
+            data,
+            &mzcore::ontology::STATIC_ONTOLOGIES,
+            &mzcore::sequence::SloppyParsingParameters::default(),
+        );
     });
 }

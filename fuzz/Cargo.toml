@@ -11,6 +11,7 @@ cargo-fuzz = true
 
 [dependencies]
 afl = { workspace = true }
+arbitrary = { workspace = true }
 context_error = { workspace = true }
 mzcore = { path = "../mzcore" }
 mzident = { path = "../mzident" }
