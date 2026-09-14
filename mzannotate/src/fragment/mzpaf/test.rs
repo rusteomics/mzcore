@@ -122,9 +122,11 @@ macro_rules! mzpaf_test {
     (ne $case:literal, $name:ident) => {
         #[test]
         fn $name() {
-            let res =
-                $crate::fragment::Fragment::mz_paf($case, &mzcore::ontology::STATIC_ONTOLOGIES, &[
-                ]);
+            let res = $crate::fragment::Fragment::mz_paf(
+                $case,
+                &mzcore::ontology::STATIC_ONTOLOGIES,
+                &[],
+            );
             //println!("{}\n{:?}", $case, res);
             assert!(res.is_err());
         }
@@ -245,9 +247,8 @@ mzpaf_test!(ne r"da0000000000000000000000000000000000", fuzz_16);
 mzpaf_test!(ne r"1@y66{/4743[07kli-,657kli-,6666666666666666660[13N1]Ca-000Ca657kli-,6666666i-,6666666666666666660[13N1]Ca-000Ca657kli-,666666666666666660[13N1]Ca-030Ca-00000Ca-00000Ca-0000Ca[13N1]Ca-0000Ca4m*0.7+,b dation]ACCa-001-,65[13N1]C666666666660[-0Ca-00[13N1]Ca-001Ca-+Ki-]}", fuzz_17);
 mzpaf_test!(ne r"1@f{H666666660H666666660H666666660H666666660}", fuzz_18);
 mzpaf_test!(ne r"0@IG,0@IP,0@I　[N8𴴴C8nl+[<5NO]H+H2PO3^29<5NO]H+H2PO3^290@_{M0@_{M]b　[", fuzz_19);
-mzpaf_test!(ne r"0@y4{/[]F}COxidati]FqCH", fuzz_20);
-mzpaf_test!(ne r"0@y4{/[            xida߳]}}", fuzz_21);
-mzpaf_test!(ne r"0@y4{/[]AGy4{M[ idation]FCK}-CHtOi]F}C", fuzz_22);
+mzpaf_test!(ne r"0@y4{A/[]}", fuzz_20);
+mzpaf_test!(ne r"0@y4{A/[Na߳]}}", fuzz_21);
 
 mzpaf_test!("IC[Carbamidomethyl]/-0.0008", hand_test_01);
 mzpaf_test!(

@@ -175,16 +175,13 @@ pub(crate) fn next_char(chars: &[u8], start: usize, char: u8) -> Option<usize> {
 /// the start, guarantees to only pick full characters
 pub(crate) fn end_of_enclosure(text: &str, start: usize, open: u8, close: u8) -> Option<usize> {
     let mut state = 1;
-    for (i, ch) in text.as_bytes()[start..].iter().enumerate() {
-        // Check if this byte is a full character (is_char_boundary also works on index==len)
-        if text.is_char_boundary(start + i) && text.is_char_boundary(start + i + 1) {
-            if *ch == open {
-                state += 1;
-            } else if *ch == close {
-                state -= 1;
-                if state == 0 {
-                    return Some(start + i);
-                }
+    for (i, ch) in text[start..].char_indices() {
+        if ch == char::from(open) {
+            state += 1;
+        } else if ch == char::from(close) {
+            state -= 1;
+            if state == 0 {
+                return Some(start + i);
             }
         }
     }

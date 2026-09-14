@@ -1696,7 +1696,7 @@ pub(super) fn parse_charge_state_2_1<'a>(
                 base_context.clone().add_highlight((0, range.start, 1)),
             )]);
         };
-        let mut carriers = Vec::with_capacity(line[range.start + 1..end - 1].split(',').count());
+        let mut carriers = Vec::with_capacity(line[range.start + 1..end].split(',').count());
         let mut offset = 0;
         for full in line[range.start + 1..end].split(',') {
             let (formula, occurence) =

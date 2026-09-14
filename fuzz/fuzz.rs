@@ -30,6 +30,9 @@ struct Args {
         help = "Minify the resulting crashes (run after a fuzzing campaign)"
     )]
     minify: bool,
+    /// The execute timeout in milliseconds
+    #[clap(long, default_value = "1000")]
+    timeout: usize,
 }
 
 fn main() {
@@ -65,12 +68,16 @@ fn main() {
         println!("Run fuzzer");
         let start = Instant::now();
         let id = AtomicUsize::new(0);
+        let timeout = args.timeout.to_string();
         thread::scope(|s| {
             for i in 0..args.jobs {
                 if i == 0 {
                     s.spawn(|| {
                         Command::new("cargo")
-                            .args(["afl", "fuzz", "-i", &input, "-o", &output, "-M", "fM", &bin])
+                            .args([
+                                "afl", "fuzz", "-t", &timeout, "-i", &input, "-o", &output, "-M",
+                                "fM", &bin,
+                            ])
                             .output()
                             .expect("Failed to launch main");
                     });
@@ -80,7 +87,8 @@ fn main() {
                         let name = format!("f{i}");
                         Command::new("cargo")
                             .args([
-                                "afl", "fuzz", "-i", &input, "-o", &output, "-S", &name, &bin,
+                                "afl", "fuzz", "-t", &timeout, "-i", &input, "-o", &output, "-S",
+                                &name, &bin,
                             ])
                             .output()
                             .expect("Failed to launch child");
