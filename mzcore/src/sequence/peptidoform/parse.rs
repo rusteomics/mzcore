@@ -1958,7 +1958,7 @@ pub(super) fn parse_charge_state_2_0<'a>(
         }
         if total_charge == found_charge {
             Ok((
-                (end_index + 1, MolecularCharge::new(&charge_carriers)),
+                (end_index + 1, MolecularCharge::new(charge_carriers)),
                 errors,
             ))
         } else {

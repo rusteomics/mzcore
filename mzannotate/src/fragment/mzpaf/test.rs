@@ -50,19 +50,23 @@ macro_rules! mzpaf_test {
                 }
                 Ok((res, _)) => {
                     let back = res.iter().map(|a| a.to_mz_paf_string()).join(",");
-                    let res_back = $crate::fragment::Fragment::mz_paf(
+                    let res_back = $crate::fragment::Fragment::mz_paf_strict(
                         &back,
                         &mzcore::ontology::STATIC_ONTOLOGIES,
                         BASIC_ANALYTES.as_slice(),
                     );
                     match res_back {
-                        Ok((res_back, _)) => {
+                        Ok((res_back, warnings)) => {
                             let back_back = res_back.iter().map(|a| a.to_mz_paf_string()).join(",");
                             assert_eq!(
                                 back, back_back,
                                 "{back} != {back_back} (from input: {})",
                                 $case
-                            )
+                            );
+                            if !warnings.is_empty() {
+                                println!("{warnings:?}");
+                                panic!("Failed test")
+                            }
                         }
                         Err(err) => {
                             println!("Failed: '{}' was exported as '{back}'", $case);
@@ -88,7 +92,32 @@ macro_rules! mzpaf_test {
                     println!("{err:?}");
                     panic!("Failed test")
                 }
-                Ok((_res, warnings)) => {
+                Ok((res, warnings)) => {
+                    let back = res.iter().map(|a| a.to_mz_paf_string()).join(",");
+                    let res_back = $crate::fragment::Fragment::mz_paf_strict(
+                        &back,
+                        &mzcore::ontology::STATIC_ONTOLOGIES,
+                        BASIC_ANALYTES.as_slice(),
+                    );
+                    match res_back {
+                        Ok((res_back, warnings)) => {
+                            let back_back = res_back.iter().map(|a| a.to_mz_paf_string()).join(",");
+                            assert_eq!(
+                                back, back_back,
+                                "{back} != {back_back} (from input: {})",
+                                $case
+                            );
+                            if !warnings.is_empty() {
+                                println!("{warnings:?}");
+                                panic!("Failed test")
+                            }
+                        }
+                        Err(err) => {
+                            println!("Failed: '{}' was exported as '{back}'", $case);
+                            println!("{err:?}");
+                            panic!("Failed test")
+                        }
+                    }
                     if !warnings.is_empty() {
                         println!("{warnings:?}");
                         panic!("Failed test")
@@ -122,11 +151,9 @@ macro_rules! mzpaf_test {
     (ne $case:literal, $name:ident) => {
         #[test]
         fn $name() {
-            let res = $crate::fragment::Fragment::mz_paf(
-                $case,
-                &mzcore::ontology::STATIC_ONTOLOGIES,
-                &[],
-            );
+            let res =
+                $crate::fragment::Fragment::mz_paf($case, &mzcore::ontology::STATIC_ONTOLOGIES, &[
+                ]);
             //println!("{}\n{:?}", $case, res);
             assert!(res.is_err());
         }
@@ -249,6 +276,7 @@ mzpaf_test!(ne r"1@f{H666666660H666666660H666666660H666666660}", fuzz_18);
 mzpaf_test!(ne r"0@IG,0@IP,0@I　[N8𴴴C8nl+[<5NO]H+H2PO3^29<5NO]H+H2PO3^290@_{M0@_{M]b　[", fuzz_19);
 mzpaf_test!(ne r"0@y4{A/[]}", fuzz_20);
 mzpaf_test!(ne r"0@y4{A/[Na߳]}}", fuzz_21);
+mzpaf_test!(ne r"y5[M+H+Na]^2", fuzz_22);
 
 mzpaf_test!("IC[Carbamidomethyl]/-0.0008", hand_test_01);
 mzpaf_test!(

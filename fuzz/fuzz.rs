@@ -7,14 +7,16 @@ edition = "2024"
 clap = { version = "4.2", features = ["derive"] }
 ---
 
-use clap::Parser;
-use std::io::{BufRead, BufWriter, Write};
-use std::iter::Sum;
-use std::process::{Command, Stdio};
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::time::{Duration, Instant};
+use std::{
+    io::{BufRead, BufWriter, Write},
+    iter::Sum,
+    process::{Command, Stdio},
+    sync::atomic::{AtomicUsize, Ordering},
+    thread,
+    time::{Duration, Instant},
+};
 
-use std::thread;
+use clap::Parser;
 
 #[derive(Debug, Parser)]
 #[clap(version)]
@@ -200,7 +202,11 @@ fn minify(target: &str, jobs: u8) {
         for item in std::fs::read_dir(&format!("out_{target}/{name}/crashes")).unwrap() {
             if let Ok(item) = item {
                 if !item.path().extension().is_some_and(|e| e == "txt") {
-                    options.push(std::fs::read_to_string(item.path()).unwrap())
+                    if let Ok(item) = std::fs::read_to_string(item.path()) {
+                        options.push(item);
+                    } else {
+                        println!("Invalid UTF8 fail at: {}", item.path().display());
+                    }
                 }
             }
         }

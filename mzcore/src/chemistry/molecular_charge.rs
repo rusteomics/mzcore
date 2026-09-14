@@ -66,7 +66,9 @@ pub struct MolecularCharge {
     /// The first number is the amount of times this adduct ion occurs, the molecular formula is
     /// the full formula for the adduct ion. The charge for each ion is saved as the number of
     /// electrons missing or gained in the molecular formula.
-    pub charge_carriers: ThinVec<(isize, MolecularFormula)>,
+    charge_carriers: ThinVec<(isize, MolecularFormula)>,
+    /// The total charge of all carriers.
+    charge: Charge,
 }
 
 impl MolecularCharge {
@@ -75,10 +77,12 @@ impl MolecularCharge {
         if charge.value == 0 {
             Self {
                 charge_carriers: ThinVec::new(),
+                charge,
             }
         } else {
             Self {
                 charge_carriers: vec![(charge.value, molecular_formula!(H 1 :z+1))].into(),
+                charge,
             }
         }
     }
@@ -91,17 +95,41 @@ impl MolecularCharge {
     }
 
     /// Create a charge state with the given ions
-    pub fn new(charge_carriers: &[(isize, MolecularFormula)]) -> Self {
+    pub fn new(charge_carriers: impl IntoIterator<Item = (isize, MolecularFormula)>) -> Self {
+        let charge_carriers = charge_carriers.into_iter().collect::<ThinVec<_>>();
+        let charge = charge_carriers.iter().fold(Charge::default(), |acc, (amount, formula)| {
+            acc + *amount * formula.charge()
+        });
         Self {
-            charge_carriers: charge_carriers.into(),
+            charge_carriers,
+            charge,
         }
     }
 
-    /// Get all options resulting in this exact charge
-    /// # Panics
-    /// If the charge is not at least 1.
+    /// Create a charge state with the given ions where none of the ions has any charge defined.
+    /// This is the case in mzPAF definitions where the charge cannot be located exactly on any
+    /// ions. This returns None if any ion has a charge set.
+    pub fn new_ambiguous(
+        charge_carriers: impl IntoIterator<Item = (isize, MolecularFormula)>,
+        charge: Charge,
+    ) -> Option<Self> {
+        let charge_carriers = charge_carriers.into_iter().collect::<ThinVec<_>>();
+        if charge_carriers.iter().all(|(_, f)| f.charge().value == 0) {
+            Some(Self {
+                charge_carriers,
+                charge,
+            })
+        } else {
+            None
+        }
+    }
+
+    /// Get all options resulting in this exact charge. Returns an empty list for any charge 0 or
+    /// below.
     pub fn options(&self, charge: Charge) -> Vec<Self> {
-        assert!(charge.value > 0);
+        if charge.value <= 0 {
+            return Vec::new();
+        }
         let own_charge = self.charge();
         let remainder = charge.value.rem_euclid(own_charge.value);
         let quotient = charge.value.div_euclid(own_charge.value).max(0);
@@ -148,21 +176,20 @@ impl MolecularCharge {
                 charge_carriers.extend(
                     std::iter::repeat_n(self.charge_carriers.clone(), quotient as usize).flatten(),
                 );
-                Self {
-                    charge_carriers: charge_carriers.into(),
-                }
-                .simplified()
+                Self::new(charge_carriers).simplified()
             })
             .collect()
     }
 
     /// Get the total charge of these charge carriers
     pub fn charge(&self) -> Charge {
-        self.charge_carriers
-            .iter()
-            .fold(Charge::default(), |acc, (amount, formula)| {
-                acc + *amount * formula.charge()
-            })
+        self.charge
+    }
+
+    /// Get the carriers of the charge, note that these might not actually have any defined charge
+    /// if these come from an mzPAF definition.
+    pub fn carriers(&self) -> &[(isize, MolecularFormula)] {
+        &self.charge_carriers
     }
 
     // The elements will be sorted on ion and deduplicated
@@ -186,6 +213,11 @@ impl MolecularCharge {
         }
         self.charge_carriers.retain(|el| el.0 != 0);
         self
+    }
+
+    /// Shrink any heap structures in this type to have less leftover padding.
+    pub fn shrink_to_fit(&mut self) {
+        self.charge_carriers.shrink_to_fit();
     }
 }
 
@@ -238,9 +270,7 @@ impl crate::space::Space for MolecularCharge {
 
 impl From<Vec<(isize, MolecularFormula)>> for MolecularCharge {
     fn from(value: Vec<(isize, MolecularFormula)>) -> Self {
-        Self {
-            charge_carriers: value.into(),
-        }
+        Self::new(value)
     }
 }
 
@@ -251,7 +281,7 @@ mod tests {
 
     #[test]
     fn simple_charge_options() {
-        let mc = MolecularCharge::new(&[(1, molecular_formula!(H 1 :z+1))]);
+        let mc = MolecularCharge::new([(1, molecular_formula!(H 1 :z+1))]);
         let options = mc.options(crate::system::isize::Charge::new::<crate::system::e>(1));
         assert_eq!(options.len(), 1);
         assert_eq!(options[0].formula(), molecular_formula!(H 1 :z+1));

@@ -16,6 +16,7 @@ context_error = { workspace = true }
 mzcore = { path = "../mzcore" }
 mzident = { path = "../mzident" }
 mzannotate = { path = "../mzannotate" }
+itertools = { workspace = true }
 
 [[bin]]
 name = "pro_forma"

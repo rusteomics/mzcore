@@ -260,8 +260,14 @@ fn parse_annotation<'a, const STRICT: bool>(
             ion,
             neutral_losses,
             isotopes,
-            charge: adduct_type
-                .unwrap_or_else(|| MolecularCharge::proton(Charge::new::<e>(charge.value))),
+            charge: adduct_type.map_or_else(
+                || MolecularCharge::proton(Charge::new::<e>(charge.value)),
+                |c| {
+                    MolecularCharge::new_ambiguous(c, Charge::new::<e>(charge.value)).expect(
+                        "A charged charge carrier has snuck in, this should not be possible",
+                    )
+                },
+            ),
             deviation,
             confidence,
         }),
@@ -1521,7 +1527,7 @@ fn parse_adduct_type<'a, const STRICT: bool>(
     base_context: &Context<'a>,
     line: &'a str,
     range: Range<usize>,
-) -> ParserResult<'a, (Range<usize>, Option<MolecularCharge>), BasicKind> {
+) -> ParserResult<'a, (Range<usize>, Option<Vec<(isize, MolecularFormula)>>), BasicKind> {
     let mut errors = Vec::new();
     if line.as_bytes().get(range.start_index()).copied() == Some(b'[') {
         let closing = handle!(single errors, end_of_enclosure(line, range.start_index() + 1, b'[', b']').ok_or_else(|| {
@@ -1553,13 +1559,7 @@ fn parse_adduct_type<'a, const STRICT: bool>(
             let carrier_start = range.start_index() + offset;
             offset += 1; // The sign
             if range.start_index() + offset >= closing {
-                return Ok((
-                    (
-                        range.add_start(offset + 2),
-                        Some(MolecularCharge::new(&carriers)),
-                    ),
-                    errors,
-                ));
+                return Ok(((range.add_start(offset + 2), Some(carriers)), errors));
             }
             let mut amount = 1;
             // Parse leading number to detect how many times this adduct occurred
@@ -1639,13 +1639,7 @@ fn parse_adduct_type<'a, const STRICT: bool>(
                 )),
             ));
         }
-        Ok((
-            (
-                range.add_start(offset + 1),
-                Some(MolecularCharge::new(&carriers)),
-            ),
-            errors,
-        ))
+        Ok(((range.add_start(offset + 1), Some(carriers)), errors))
     } else {
         Ok(((range, None), errors))
     }

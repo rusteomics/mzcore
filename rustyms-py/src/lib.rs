@@ -436,19 +436,16 @@ impl MolecularCharge {
     /// MolecularCharge
     #[new]
     fn new(charge_carriers: Vec<(i32, MolecularFormula)>) -> Self {
-        Self(mzcore::chemistry::MolecularCharge {
-            charge_carriers: charge_carriers
-                .iter()
-                .map(|(n, mol)| (*n as isize, mol.0.clone()))
-                .collect(),
-        })
+        Self(mzcore::chemistry::MolecularCharge::new(
+            charge_carriers.iter().map(|(n, mol)| (*n as isize, mol.0.clone())),
+        ))
     }
 
     fn __repr__(&self) -> String {
         format!(
             "MolecularCharge(charge_carriers={})",
             self.0
-                .charge_carriers
+                .carriers()
                 .iter()
                 .map(|(n, mol)| format!("({n}, {mol})"))
                 .collect::<Vec<_>>()
@@ -482,7 +479,7 @@ impl MolecularCharge {
     #[getter]
     fn charge_carriers(&self) -> Vec<(i32, MolecularFormula)> {
         self.0
-            .charge_carriers
+            .carriers()
             .iter()
             .map(|(n, mol)| (*n as i32, MolecularFormula(mol.clone())))
             .collect()

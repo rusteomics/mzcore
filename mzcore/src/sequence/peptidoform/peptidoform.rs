@@ -380,7 +380,7 @@ impl<Complexity> Peptidoform<Complexity> {
         }
         self.modifications_of_unknown_position.shrink_to_fit();
         if let Some(c) = &mut self.charge_carriers {
-            c.charge_carriers.shrink_to_fit();
+            c.shrink_to_fit();
         }
     }
 
