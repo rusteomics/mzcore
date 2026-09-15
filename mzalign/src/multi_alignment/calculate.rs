@@ -102,7 +102,7 @@ impl<Sequence, const STEPS: u16> MultiAlignmentLineTemp<'_, Sequence, STEPS> {
                     for _ in 0..take - 1 {
                         self.path.remove(path_index + 1);
                     }
-                    path_index += usize::from(path_index != self.path.len() - 1); // Just saturate for now 
+                    path_index += usize::from(path_index != self.path.len() - 1); // Just saturate for now
                 } else {
                     self.path[path_index].aligned_length +=
                         aligned_step.saturating_sub(sequence_step);
@@ -113,7 +113,7 @@ impl<Sequence, const STEPS: u16> MultiAlignmentLineTemp<'_, Sequence, STEPS> {
                         aligned_index +=
                             self.path[path_index].aligned_length - initial_offset_correction;
                         initial_offset_correction = 0;
-                        path_index += usize::from(path_index != self.path.len() - 1); // Just saturate for now 
+                        path_index += usize::from(path_index != self.path.len() - 1); // Just saturate for now
                     }
                 }
             }
@@ -681,7 +681,10 @@ pub(super) fn multi_align_cached<
                                 // len_a and b are always <= STEPS
                                 let match_score = {
                                     let prev = unsafe {
-                                        matrix.get_unchecked([index_a - len_a, index_b - len_b])
+                                        matrix.get_unchecked([
+                                            index_a.saturating_sub(len_a),
+                                            index_b.saturating_sub(len_b),
+                                        ])
                                     };
                                     let base_score = prev.score;
                                     a[line_a]

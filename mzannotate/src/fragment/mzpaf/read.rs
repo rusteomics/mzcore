@@ -107,27 +107,32 @@ impl Fragment<OutputMolecularFormula> {
         ontologies: &Ontologies,
         interpretation: &[(NonZeroU32, AnalyteTarget)],
     ) -> ParserResult<'a, Vec<Self>, BasicKind> {
-        parse_intermediate_representation::<STRICT>(base_context, line, range, ontologies).and_then(
-            |(annotations, mut errors)| {
-                let mut correct = Vec::with_capacity(annotations.len());
-                let mut failed = false;
+        parse_intermediate_representation::<STRICT>(
+            base_context,
+            line,
+            range,
+            ontologies,
+            interpretation.len(),
+        )
+        .and_then(|(annotations, mut errors)| {
+            let mut correct = Vec::with_capacity(annotations.len());
+            let mut failed = false;
 
-                for annotation in annotations {
-                    match annotation.into_fragment(interpretation, base_context) {
-                        Ok(v) => correct.push(v),
-                        Err(err) => {
-                            failed = true;
-                            errors.push(err);
-                        }
+            for annotation in annotations {
+                match annotation.into_fragment(interpretation, base_context) {
+                    Ok(v) => correct.push(v),
+                    Err(err) => {
+                        failed = true;
+                        errors.push(err);
                     }
                 }
-                if failed {
-                    Err(errors)
-                } else {
-                    Ok((correct, errors))
-                }
-            },
-        )
+            }
+            if failed {
+                Err(errors)
+            } else {
+                Ok((correct, errors))
+            }
+        })
     }
 }
 
@@ -144,7 +149,7 @@ impl Fragment<OutputMolecularFormula> {
 // - [x] Charge moieties in alphanumeric order.
 // - [x] Warn on incorrect capitalisation of molecular formulas
 // - [x] Do not have the same loss/gain multiple times (need to be combined)
-// - [ ] only one analyte not 1@.
+// - [x] only one analyte not 1@.
 // - [ ] Only use lowest possible identical internal ion (page 11).
 // - [ ] Validate base ProForma
 
@@ -156,13 +161,14 @@ fn parse_intermediate_representation<'a, const STRICT: bool>(
     line: &'a str,
     range: Range<usize>,
     ontologies: &Ontologies,
+    number_of_analytes: usize,
 ) -> ParserResult<'a, Vec<PeakAnnotation>, BasicKind> {
     let mut annotations = Vec::new();
     let start_range = range.clone();
 
     // Parse first
     let ((mut range, a), mut errors) =
-        parse_annotation::<STRICT>(base_context, line, range, ontologies)?;
+        parse_annotation::<STRICT>(base_context, line, range, ontologies, number_of_analytes)?;
     annotations.push(a);
 
     // Parse any following
@@ -182,7 +188,7 @@ fn parse_intermediate_representation<'a, const STRICT: bool>(
             return Err(errors);
         }
         let ((r, a), additional_errors) =
-            parse_annotation::<STRICT>(base_context, line, range, ontologies)?;
+            parse_annotation::<STRICT>(base_context, line, range, ontologies, number_of_analytes)?;
         errors.extend_from_slice(&additional_errors);
         range = r;
         annotations.push(a);
@@ -227,6 +233,7 @@ fn parse_annotation<'a, const STRICT: bool>(
     line: &'a str,
     range: Range<usize>,
     ontologies: &Ontologies,
+    number_of_analytes: usize,
 ) -> ParserResult<'a, (Range<usize>, PeakAnnotation), BasicKind> {
     let mut errors = Vec::new();
     let (left_range, auxiliary) = if line.as_bytes().get(range.start_index()).copied() == Some(b'&')
@@ -235,8 +242,10 @@ fn parse_annotation<'a, const STRICT: bool>(
     } else {
         (range, false)
     };
-    let (left_range, analyte_number) =
-        handle!(single errors, parse_analyte_number(base_context, line, left_range));
+    let (left_range, analyte_number) = handle!(
+        errors,
+        parse_analyte_number::<STRICT>(base_context, line, left_range, number_of_analytes)
+    );
     let (left_range, ion) = handle!(
         errors,
         parse_ion::<STRICT>(base_context, line, left_range, ontologies)
@@ -573,24 +582,25 @@ pub(crate) enum IonType {
 /// Parse a mzPAF analyte number. '1@...'
 /// # Errors
 /// When the ion is not formatted correctly.
-fn parse_analyte_number<'a>(
+fn parse_analyte_number<'a, const STRICT: bool>(
     base_context: &Context<'a>,
     line: &'a str,
     range: Range<usize>,
-) -> Result<(Range<usize>, u32), BoxedError<'a, BasicKind>> {
+    number_of_analytes: usize,
+) -> ParserResult<'a, (Range<usize>, u32), BasicKind> {
     next_number::<false, false, u32>(line, range.clone()).map_or_else(
-        || Ok((range.clone(), 1)),
+        || Ok(((range.clone(), 1), Vec::new())),
         |num| {
             if line.as_bytes().get(num.0 + range.start).copied() != Some(b'@') {
-                return Err(BoxedError::new(
+                return Err(vec![BoxedError::new(
                     BasicKind::Error,
                     "Invalid mzPAF analyte number",
                     "The analyte number should be followed by an at sign '@'",
                     base_context.clone().add_highlight((0, num.0 + range.start, 1)),
-                ));
+                )]);
             }
-            Ok((
-                range.add_start(num.0 + 1),
+            let mut errors = Vec::new();
+            let number = handle!(single errors,
                 num.2.map_err(|err| {
                     BoxedError::new(
                         BasicKind::Error,
@@ -598,8 +608,25 @@ fn parse_analyte_number<'a>(
                         format!("The analyte number number {}", explain_number_error(&err)),
                         base_context.clone().add_highlight((0, range.start, num.0)),
                     )
-                })?,
-            ))
+                })
+            );
+            if STRICT && number == 1 && number_of_analytes == 1 {
+                errors.push(BoxedError::new(
+                    BasicKind::Warning,
+                    "Invalid mzPAF analyte number",
+                    "If there is only one analyte the analyte number should not be written",
+                    base_context.clone().add_highlight((0, num.0 + range.start, 1)),
+                ));
+            }
+            if number as usize > number_of_analytes {
+                errors.push(BoxedError::new(
+                    BasicKind::Warning,
+                    "Invalid mzPAF analyte number",
+                    "This analyte ",
+                    base_context.clone().add_highlight((0, num.0 + range.start, 1)),
+                ));
+            }
+            Ok(((range.add_start(num.0 + 1), number), Vec::new()))
         },
     )
 }
@@ -1977,7 +2004,7 @@ fn parse_correctly() {
     )];
     let a = "y8^2/-0.0017";
     let ((_, parse_a), _) =
-        parse_annotation::<false>(&Context::default(), a, 0..a.len(), &ontologies).unwrap();
+        parse_annotation::<false>(&Context::default(), a, 0..a.len(), &ontologies, 1).unwrap();
     assert!(!parse_a.auxiliary);
     assert_eq!(parse_a.analyte_number, 1);
     assert_eq!(
@@ -2002,7 +2029,7 @@ fn parse_correctly() {
 
     let b = "y8+i^2/0.0002";
     let ((_, parse_b), _) =
-        parse_annotation::<false>(&Context::default(), b, 0..b.len(), &ontologies).unwrap();
+        parse_annotation::<false>(&Context::default(), b, 0..b.len(), &ontologies, 1).unwrap();
     assert!(!parse_b.auxiliary);
     assert_eq!(parse_b.analyte_number, 1);
     assert_eq!(
