@@ -2,12 +2,14 @@ use std::sync::LazyLock;
 
 use itertools::Itertools;
 use mzcore::{
-    chemistry::{AmbiguousMolecule, MassOutputMode, MassOutputType, NeutralLoss},
+    chemistry::{AmbiguousMolecule, MassOutputMode, MassOutputType, MolecularFormula, NeutralLoss},
     quantities::Tolerance,
     sequence::{BACKBONE, IsAminoAcid},
 };
 
-use crate::fragment::{BackboneCFragment, BackboneNFragment, Fragment, FragmentType};
+use crate::fragment::{
+    BackboneCFragment, BackboneNFragment, Fragment, FragmentType, mzpaf::MZPAF_CANONICAL_LOSSES,
+};
 
 /// Any data structure that can be written to mzPAF
 pub trait ToMzPAF {
@@ -229,23 +231,45 @@ impl<Mode: MassOutputMode> ToMzPAF for Fragment<Mode> {
             }
         }
         // More losses
+        let mut losses = Vec::with_capacity(self.neutral_loss.len());
+        let format_loss = |f: &MolecularFormula| {
+            for (cf, cn) in &*MZPAF_CANONICAL_LOSSES {
+                if f == cf {
+                    return cn.to_string();
+                }
+            }
+            f.to_string()
+        };
         for loss in &self.neutral_loss {
             match loss {
                 NeutralLoss::SideChainLoss(_, aa) => {
-                    write!(w, "-[sidechain_{aa}]")?;
+                    losses.push(("-".to_string(), format!("[sidechain_{aa}]")));
                 }
                 NeutralLoss::Gain(1, mol) => {
-                    write!(w, "+{mol}")?;
+                    losses.push(("+".to_string(), format_loss(mol)));
                 }
                 NeutralLoss::Loss(1, mol) => {
-                    write!(w, "-{mol}")?;
+                    losses.push(("-".to_string(), format_loss(mol)));
                 }
-                l => write!(w, "{l}")?,
+                NeutralLoss::Gain(n, mol) => losses.push((format!("+{n}"), format_loss(mol))),
+                NeutralLoss::Loss(n, mol) => losses.push((format!("-{n}"), format_loss(mol))),
             }
         }
+        losses.sort_unstable_by(|a, b| a.1.cmp(&b.1));
+        for (leading, formula) in losses {
+            w.write_str(&leading)?;
+            w.write_str(&formula)?;
+        }
+
         // Isotopes
         for (amount, isotope) in &self.isotope {
-            write!(w, "{amount:+}{isotope}")?;
+            match amount {
+                0 => continue,
+                1 => write!(w, "+")?,
+                -1 => write!(w, "+")?,
+                n => write!(w, "{n:+}")?,
+            }
+            write!(w, "{isotope}")?;
         }
         // Charge state
         if self.charge.value != 1 {

@@ -6,6 +6,7 @@ use std::{
 };
 
 use context_error::*;
+use itertools::Itertools;
 use mzcore::{
     ParserResult,
     chemistry::{
@@ -32,6 +33,25 @@ use crate::{
     },
     mzspeclib::AnalyteTarget,
 };
+
+/// The list of canonicalised neutral losses
+pub(super) const MZPAF_CANONICAL_LOSSES: LazyLock<[(MolecularFormula, &'static str); 12]> =
+    LazyLock::new(|| {
+        [
+            (molecular_formula!(N 1 H 3), "NH3"),
+            (molecular_formula!(H 2 O 1), "H2O"),
+            (molecular_formula!(C 1 O 1), "CO"),
+            (molecular_formula!(C 1 O 2), "CO2"),
+            (molecular_formula!(H 3 C 1 N 1 O 1), "HCONH2"),
+            (molecular_formula!(H 2 C 1 O 2), "HCOOH"),
+            (molecular_formula!(H 4 C 1 O 1 S 1), "CH4OS"),
+            (molecular_formula!(S 1 O 3), "SO3"),
+            (molecular_formula!(H 1 O 3 P 1), "HPO3"),
+            (molecular_formula!(H 5 C 2 N 1 O 1 S 1), "C2H5NOS"),
+            (molecular_formula!(H 4 C 2 O 2 S 1), "C2H4O2S"),
+            (molecular_formula!(H 3 O 4 P 1), "H3PO4"),
+        ]
+    });
 
 impl Fragment<OutputMolecularFormula> {
     /// Parse a [mzPAF](https://www.psidev.info/mzPAF) peak annotation line (can contain multiple annotations).
@@ -122,10 +142,11 @@ impl Fragment<OutputMolecularFormula> {
 //   confidence all have to have a confidence.
 // - [x] No charge 0 (maybe talk about this for decharged matching?).
 // - [x] Charge moieties in alphanumeric order.
+// - [x] Warn on incorrect capitalisation of molecular formulas
+// - [x] Do not have the same loss/gain multiple times (need to be combined)
 // - [ ] only one analyte not 1@.
 // - [ ] Only use lowest possible identical internal ion (page 11).
-// - [ ] Warn on incorrect capitalisation of molecular formulas
-// - [ ] Do not have the same loss/gain multiple times (need to be combined)
+// - [ ] Validate base ProForma
 
 /// Parse a mzPAF line into the internal representation, see [`parse_mz_paf`] for more information.
 /// # Errors
@@ -169,7 +190,7 @@ fn parse_intermediate_representation<'a, const STRICT: bool>(
 
     if STRICT {
         if let Some((sorted, _)) = annotations.iter().try_fold((true, f64::MAX), |acc, a| {
-            a.confidence.map(|c| (acc.0 && c >= acc.1, c))
+            a.confidence.map(|c| (acc.0 && c <= acc.1, c))
         }) {
             if !sorted {
                 combine_error(
@@ -232,22 +253,10 @@ fn parse_annotation<'a, const STRICT: bool>(
         errors,
         parse_adduct_type::<STRICT>(base_context, line, left_range)
     );
-    let before_charge = left_range.clone();
-    let (left_range, charge) = handle!(single errors, parse_charge(base_context, line, left_range));
-
-    if STRICT && charge.value == 0 {
-        combine_error(
-            &mut errors,
-            BoxedError::new(
-                BasicKind::Warning,
-                "Invalid mzPAF charge state",
-                "A charge of 0 is not allowed",
-                base_context
-                    .clone()
-                    .add_highlight((0, before_charge.start..left_range.start)),
-            ),
-        );
-    }
+    let (left_range, charge) = handle!(
+        errors,
+        parse_charge::<STRICT>(base_context, line, left_range)
+    );
 
     let (left_range, deviation) =
         handle!(single errors, parse_deviation(base_context, line, left_range));
@@ -1338,22 +1347,9 @@ pub(in crate::fragment) fn parse_neutral_loss<'a, const STRICT: bool>(
                 first..first + last,
             ));
             if STRICT {
-                for (well_known_molecule, canonical_form) in [
-                    (molecular_formula!(N 1 H 3), "NH3"),
-                    (molecular_formula!(H 2 O 1), "H2O"),
-                    (molecular_formula!(C 1 O 1), "CO"),
-                    (molecular_formula!(C 1 O 2), "CO2"),
-                    (molecular_formula!(H 3 C 1 N 1 O 1), "HCONH2"),
-                    (molecular_formula!(H 2 C 1 O 2), "HCOOH"),
-                    (molecular_formula!(H 4 C 1 O 1 S 1), "CH4OS"),
-                    (molecular_formula!(S 1 O 3), "SO3"),
-                    (molecular_formula!(H 1 O 3 P 1), "HPO3"),
-                    (molecular_formula!(H 5 C 2 N 1 O 1 S 1), "C2H5NOS"),
-                    (molecular_formula!(H 4 C 2 O 2 S 1), "C2H4O2S"),
-                    (molecular_formula!(H 3 O 4 P 1), "H3PO4"),
-                ] {
-                    if formula == well_known_molecule
-                        && &line[first..first + last] != canonical_form
+                for (well_known_molecule, canonical_form) in &*MZPAF_CANONICAL_LOSSES {
+                    if formula == *well_known_molecule
+                        && &line[first..first + last] != *canonical_form
                     {
                         errors.push(BoxedError::new(
                                 BasicKind::Warning,
@@ -1375,18 +1371,43 @@ pub(in crate::fragment) fn parse_neutral_loss<'a, const STRICT: bool>(
             offset += 1 + last;
         }
     }
-    // Check sorting
-    if STRICT && !neutral_loss_substrings.is_sorted() {
-        errors.push(BoxedError::new(
-            BasicKind::Warning,
-            "mzPAF neutral losses not sorted",
-            "The neutral losses/gains should be sorted alphabetically",
-            base_context.clone().add_highlight((
-                0,
-                range.start_index(),
-                range.start_index() + offset,
-            )),
-        ));
+    if STRICT {
+        // Check sorting
+        if !neutral_loss_substrings.is_sorted() {
+            errors.push(BoxedError::new(
+                BasicKind::Warning,
+                "mzPAF neutral losses not sorted",
+                "The neutral losses/gains should be sorted alphabetically",
+                base_context.clone().add_highlight((
+                    0,
+                    range.start_index(),
+                    range.start_index() + offset,
+                )),
+            ));
+        }
+        let def = MolecularFormula::default();
+        if neutral_losses
+            .iter()
+            .map(|l| match l {
+                NeutralLoss::Gain(_, f) => f,
+                NeutralLoss::Loss(_, f) => f,
+                NeutralLoss::SideChainLoss(..) => &def,
+            })
+            .unique()
+            .count()
+            != neutral_losses.len()
+        {
+            errors.push(BoxedError::new(
+                BasicKind::Warning,
+                "mzPAF neutral losses not combined",
+                "Neutral losses/gains with the same formula should be combined into a single definition using the amount specifier",
+                base_context.clone().add_highlight((
+                    0,
+                    range.start_index(),
+                    range.start_index() + offset,
+                )),
+            ));
+        }
     }
     Ok(((range.add_start(offset), neutral_losses), errors))
 }
@@ -1649,41 +1670,62 @@ fn parse_adduct_type<'a, const STRICT: bool>(
 /// # Errors
 /// If there is no number after the caret, or if the number is invalid (outside of range and the
 /// like).
-fn parse_charge<'a>(
+fn parse_charge<'a, const STRICT: bool>(
     base_context: &Context<'a>,
     line: &'a str,
     range: Range<usize>,
-) -> Result<(Range<usize>, Charge), BoxedError<'a, BasicKind>> {
+) -> ParserResult<'a, (Range<usize>, Charge), BasicKind> {
     if line.as_bytes().get(range.start_index()).copied() == Some(b'^') {
-        let charge =
-            next_number::<true, false, isize>(line, range.add_start(1_usize)).ok_or_else(|| {
-                BoxedError::new(
-                    BasicKind::Error,
-                    "Invalid mzPAF charge",
-                    "The number after the charge symbol should be present, eg '^2'.",
-                    base_context.clone().add_highlight((0, range.start_index(), 1)),
-                )
-            })?;
+        let mut errors = Vec::new();
+        let charge = handle!(single errors,
+        next_number::<true, false, isize>(line, range.add_start(1_usize)).ok_or_else(|| {
+            BoxedError::new(
+                BasicKind::Error,
+                "Invalid mzPAF charge",
+                "The number after the charge symbol should be present, eg '^2'.",
+                base_context.clone().add_highlight((0, range.start_index(), 1)),
+            )
+        }));
+        let charge_amount = handle!( single errors, charge.2.map_err(|err| {
+            BoxedError::new(
+                BasicKind::Error,
+                "Invalid mzPAF charge",
+                format!("The charge number {}", explain_number_error(&err)),
+                base_context.clone().add_highlight((0, range.start_index() + 1, charge.0)),
+            )
+        }));
+        if STRICT {
+            if charge_amount == 0 {
+                combine_error(
+                    &mut errors,
+                    BoxedError::new(
+                        BasicKind::Warning,
+                        "Invalid mzPAF charge state",
+                        "A charge of 0 is not allowed",
+                        base_context.clone().add_highlight((0, range.start_index() + 1, charge.0)),
+                    ),
+                );
+            } else if charge_amount == 1 {
+                combine_error(
+                    &mut errors,
+                    BoxedError::new(
+                        BasicKind::Warning,
+                        "Invalid mzPAF charge state",
+                        "A charge of 1 should not be written out",
+                        base_context.clone().add_highlight((0, range.start_index() + 1, charge.0)),
+                    ),
+                );
+            }
+        }
         Ok((
-            range.add_start(charge.0 + 1),
-            Charge::new::<e>(
-                if charge.1 { 1 } else { -1 }
-                    * charge.2.map_err(|err| {
-                        BoxedError::new(
-                            BasicKind::Error,
-                            "Invalid mzPAF charge",
-                            format!("The charge number {}", explain_number_error(&err)),
-                            base_context.clone().add_highlight((
-                                0,
-                                range.start_index() + 1,
-                                charge.0,
-                            )),
-                        )
-                    })?,
+            (
+                range.add_start(charge.0 + 1),
+                Charge::new::<e>(if charge.1 { 1 } else { -1 } * charge_amount),
             ),
+            errors,
         ))
     } else {
-        Ok((range, Charge::new::<e>(1)))
+        Ok(((range, Charge::new::<e>(1)), Vec::new()))
     }
 }
 
