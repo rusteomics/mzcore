@@ -100,8 +100,8 @@ impl CanWritePSMs for PSMsWritten {}
 
 impl<W: Write> MzTabWriter<W, Initial> {
     /// Convenience function to easily write all information to an mzTab file.
-    /// An [`MSRun`] has to be given for all PSMs that are [`SpectrumIds::FileNotKnown`] to still
-    /// point to the correct location.
+    /// An [`MzTabMSRun`] has to be given for all PSMs that are [`SpectrumIds::FileNotKnown`] to
+    /// still point to the correct location.
     /// # Errors
     /// If writing to the underlying writer failed.
     pub fn write<PSM: PSMMetaData>(
@@ -181,7 +181,7 @@ impl<W: Write> MzTabWriter<W, Initial> {
     }
 
     /// Write the header. Adds the standard mzTab version, mode, and type headers and writes all
-    /// keys for the [`MSRun`]s. All other keys can be added as a tuple of (key, value).
+    /// keys for the [`MzTabMSRun`]s. All other keys can be added as a tuple of (key, value).
     /// # Errors
     /// If the underlying writer fails.
     pub fn write_header(mut self) -> Result<MzTabWriter<W, HeaderWritten>, std::io::Error> {
@@ -1079,8 +1079,8 @@ pub enum MzTabWriteError {
     IO(std::io::Error),
     /// A formatting error, meaning that writing to a string did not work
     Fmt(std::fmt::Error),
-    /// No [`MSRun`] is written in the header for this file, or if None there are no files and a
-    /// [`SpectrumIds::FileNotKnown`] is given
+    /// No [`MzTabMSRun`] is written in the header for this file, or if None there are no files and
+    /// a [`SpectrumIds::FileNotKnown`] is given
     MissingMSRun(Option<PathBuf>),
     /// This PSM search engine term is not written in the header for this file
     MissingSearchEngine(Term),
@@ -1136,7 +1136,7 @@ impl std::error::Error for MzTabWriteError {}
 
 impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
     /// Write the given list of PSMs to this mzTab file. It will take as much information as
-    /// possible via the [`MetaData`] trait. Any cross-linked peptides (inter and intra) are
+    /// possible via the [`PSMMetaData`] trait. Any cross-linked peptides (inter and intra) are
     /// ignored as these cannot be written in mzTab. Any chimeric peptidoforms are written on
     /// separate lines. Any [`SpectrumId::RetentionTime`] ids are ignored as these cannot be stored
     /// in mzTab.
@@ -1148,7 +1148,7 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
     /// * If writing to the underlying writer failed.
     /// * If writing to a string for formatting failed (not expected as formatting is seen as
     ///   infallible see [`std::fmt::Error`]).
-    /// * If a spectrum is referenced that is not defined as a [`MSRun`].
+    /// * If a spectrum is referenced that is not defined as a [`MzTabMSRun`].
     pub fn write_psms<PSM: PSMMetaData>(
         mut self,
         psms: impl IntoIterator<Item = PSM>,

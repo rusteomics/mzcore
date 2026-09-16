@@ -49,7 +49,7 @@ pub trait PSMMetaData {
     fn mode(&self) -> Option<Cow<'_, str>>;
 
     /// Which built-in fragmentation model this fragmentation mode matches to.
-    /// The default implementation matches on the textual output of [`MetaData::mode`].
+    /// The default implementation matches on the textual output of [`PSMMetaData::mode`].
     /// If needed a custom implementation can be made.
     #[cfg(feature = "mzannotate")]
     fn fragmentation_model(

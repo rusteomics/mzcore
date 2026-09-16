@@ -261,7 +261,7 @@ impl<'a, Sequence: HasPeptidoform<Linear>, const STEPS: u16>
 
 impl<const STEPS: u16, Sequence: HasPeptidoform<Linear> + Clone> AlignIndex<STEPS, Sequence> {
     /// Get matrix with the distances between all sequences in this index. It uses
-    /// [`mzalign::Alignment::distance`] as metric.
+    /// [`crate::Alignment::distance`] as metric.
     /// # Panics
     /// If more than [`u16::MAX`] sequences are given.
     pub fn distance_matrix(
@@ -360,7 +360,7 @@ impl<const STEPS: u16, Sequence: HasPeptidoform<Linear> + Clone + Send + Sync>
     AlignIndex<STEPS, Sequence>
 {
     /// Get matrix with the distances between all sequences in this index. It uses
-    /// [`Alignment::distance`] as metric.
+    /// [`crate::Alignment::distance`] as metric.
     /// # Panics
     /// If more than [`u16::MAX`] sequences are given.
     #[cfg(feature = "rayon")]

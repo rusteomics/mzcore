@@ -2,13 +2,15 @@
 
 //! This crate handles parsing the [IMGT LIGM-DB database](https://www.imgt.org/) into structures compatible with mzcore.
 //! It additionally stores all regions and annotations. There are two main ways of selecting
-//! germline(s), specified by name [`get_germline`](crate::imgt::get_germline) or by building a
-//! query over the data [`Selection`](crate::imgt::Selection).
+//! germline(s), by using the [`IMGT`] CV access or by building a
+//! query over the data [`Selection`].
 //!
 //! <details><summary>Data present per species</summary>
 #![doc = include_str!("germlines.md")]
 //!
 //! </details>
+
+use flate2 as _;
 
 mod combine;
 mod cv;

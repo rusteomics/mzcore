@@ -1,6 +1,7 @@
 #![doc = include_str!("../README.md")]
 #![expect(macro_use_extern_crate)] // Could not get uom to work without
 use bincode as _;
+use flate2 as _;
 
 #[macro_use]
 mod helper_functions;

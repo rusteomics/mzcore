@@ -203,7 +203,7 @@ impl PSMFileFormatVersion<MetaMorpheusFormat> for MetaMorpheusVersion {
     }
 }
 
-/// The only supported format for [`MetaMorpheus`] data
+/// The only supported format for [`MetaMorpheusPSM`] data
 pub const META_MORPHEUS: MetaMorpheusFormat = MetaMorpheusFormat {
     version: MetaMorpheusVersion::MetaMorpheus,
     contaminant: "contaminant",

@@ -17,10 +17,17 @@ pub static STATIC_ONTOLOGIES: LazyLock<Ontologies> = LazyLock::new(Ontologies::i
 
 /// Handle all ProForma needed ontologies.
 ///
-/// Get a copy via [`Self::init()`], [`Self::init_static()`] (or [`STATIC_ONTOLOGIES`]), or even
-/// [`Self::empty`]. Then find modifications using either [`Self::get_by_name`],
-/// , [`Self::search`], or the same methods on one particular ontology
-/// as `Self::unimod().get_by_index()`.
+/// The standard way to access these is via [`Self::init()`]. This will first scan the folder to
+/// check if there are local versions of the ontologies before falling back to the static versions.
+/// If the static versions are preferred, for example when running in unit tests,
+/// [`Self::init_static()`] (or [`STATIC_ONTOLOGIES`]) can be used to skip checking for local
+/// updates. If a fully empty version is preferred, for example if it will be overridden by non
+/// standard paths or just to make the compiler happy but there is no need for this information at
+/// all, [`Self::empty`] can be used.
+///
+/// Then modifications can be found using either [`Self::get_by_name`],
+/// [`Self::get_by_name_or_synonym`], [`Self::get_by_index`], [`Self::search`], or the same methods
+/// on one particular ontology as `Self::unimod().get_by_index()`.
 ///
 /// ```rust
 /// use mzcore::{molecular_formula, ontology::STATIC_ONTOLOGIES, prelude::*};
@@ -227,7 +234,7 @@ impl Ontologies {
 
     /// Load a data item by name or if that fails by synonym, names are matched in a case
     /// insensitive manner. Returns a boolean indicating if it matches a name `true` or a synonym
-    /// `false`
+    /// `false`.
     pub fn get_by_name_or_synonym(
         &self,
         ontologies: &[Ontology],

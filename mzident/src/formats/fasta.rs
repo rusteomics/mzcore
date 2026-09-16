@@ -833,7 +833,7 @@ where
         }
     }
 
-    /// Get it as a Cow<str> version
+    /// Get it as a `Cow<str>` version
     pub fn as_cow_str(&'a self) -> FastaIdentifier<Cow<'a, str>> {
         match self {
             Self::GenInfoBackboneSeqID(decoy, a) => {

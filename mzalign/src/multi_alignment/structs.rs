@@ -352,8 +352,8 @@ impl<Sequence: HasPeptidoform<Linear>> MultiAlignmentLine<Sequence> {
     }
 }
 
-/// How a single piece of sequence if aligned in an MMSA, analogous to [Piece] from a pairwise
-/// alignment.
+/// How a single piece of sequence if aligned in an MMSA, analogous to [crate::Piece] from a
+/// pairwise alignment.
 #[derive(
     Clone, Copy, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
 )]
