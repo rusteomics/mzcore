@@ -6,7 +6,7 @@ use mzdata::{
     mzpeaks::{MZPeakSetType, peak_set::PeakSetVec, prelude::*},
     params::{ParamDescribed, ParamLike, Unit, Value, ValueRef},
     prelude::{IonProperties, SpectrumLike},
-    spectrum::{MultiLayerSpectrum, SignalContinuity, SpectrumDescription},
+    spectrum::{MultiLayerSpectrum, SpectrumDescription},
 };
 
 use crate::{
@@ -222,21 +222,19 @@ impl<Spectrum: SpectrumLike, Mode: MassOutputMode> From<Spectrum> for AnnotatedS
             }
         }
 
-        if value.signal_continuity() == SignalContinuity::Centroid {
-            this.peaks = value
-                .peaks()
-                .iter()
-                .map(|v| {
-                    AnnotatedPeak::new(
-                        MassOverCharge::new::<mzcore::system::thomson>(v.mz()),
-                        v.intensity(),
-                        0,
-                        Vec::new(),
-                        Vec::new(),
-                    )
-                })
-                .collect();
-        }
+        this.peaks = value
+            .peaks()
+            .iter()
+            .map(|v| {
+                AnnotatedPeak::new(
+                    MassOverCharge::new::<mzcore::system::thomson>(v.mz()),
+                    v.intensity(),
+                    0,
+                    Vec::new(),
+                    Vec::new(),
+                )
+            })
+            .collect();
 
         this
     }

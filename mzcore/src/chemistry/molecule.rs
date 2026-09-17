@@ -330,7 +330,7 @@ impl MassOutputType for MassOutput {
     }
 
     fn contains_negative_amount(&self) -> bool {
-        self.mass.value >= 0.0
+        self.mass.value < 0.0
     }
 
     fn as_formula(&self) -> MolecularFormula {

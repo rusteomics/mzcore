@@ -136,7 +136,7 @@ fn select_model<'a>(
     match text.to_ascii_lowercase().as_str() {
         "etd" => FragmentationModel::etd(),
         "td_etd" => FragmentationModel::td_etd(),
-        "ethcd" | "etcad" => FragmentationModel::etcid(),
+        "ethcd" | "etcad" | "etcid" => FragmentationModel::etcid(),
         "eacid" => FragmentationModel::eacid(),
         "ead" => FragmentationModel::ead(),
         "hcd" | "cid" => FragmentationModel::cid(),
@@ -174,7 +174,7 @@ fn main() {
                 .expect("Could not parse custom models file, if you do not need these you can skip parsing them using the appropriate flag"),
         )
     };
-    let model = select_model(
+    let general_model = select_model(
         &args.mode,
         FragmentationModel::all(),
         custom_models.as_deref(),
@@ -211,12 +211,14 @@ fn main() {
 
     let out_data: Vec<_> =  files.par_iter().flat_map(|(file_name, lines)| {
         let mut file = mzdata::io::MZReaderType::open_path(file_name).unwrap_or_else(|err| {eprintln!("Could not open raw file: {}\nError: {err}", file_name.to_string_lossy()); std::process::exit(2)});
+        // let writer = MzSpecLibTextWriter::new(File::create(format!("{}.mzspeclib.txt", file_name.file_stem().unwrap().to_string_lossy())).unwrap());
+        // let mut writer = writer.write_header().unwrap();
 
         let rows = lines
             .iter()
             .filter_map(|line| {
                 let selected_model = line.mode.as_ref()
-                    .map_or(model, |text| select_model(text, model, custom_models.as_deref(),));
+                    .map_or(general_model, |text| select_model(text, general_model, custom_models.as_deref(),));
                 if let Some(mut spectrum) = file.get_spectrum_by_index(line.scan_index)
                 {
                     if spectrum.signal_continuity() == SignalContinuity::Profile {
@@ -252,6 +254,8 @@ fn main() {
                     let scores: &Scores = &annotated
                         .scores(&fragments, &parameters, MassMode::Monoisotopic)
                         .1[0][0];
+
+                    // writer.write_spectrum(&annotated).unwrap();
 
                     let mut row: BTreeMap<Arc<String>, String> = line.full_csv_line().unwrap_or(&[]).iter().cloned().collect();
 

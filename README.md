@@ -62,9 +62,9 @@ The final goal would be to support all related open standards (or at least the o
 
 | Format | Version |  crate | Reading | Writing | Comment |
 | --- | --- | ---| --- | --- | --- |
-| [ProForma](https://github.com/HUPO-PSI/ProForma) | 2.0 & 2.1 | mzcore | ✅ | ✅ | |
+| [ProForma](https://github.com/HUPO-PSI/ProForma) | 2.0 & 2.1 | mzcore | ✅ | ✅ | Has a strict mode which is used as the [ProForma validator](https://proforma.psidev.info) |
 | [OpenSMILES](http://opensmiles.org/opensmiles.html) | 1.0 | mzcore | ✅ | ❌ | Chimeric information is not retained & atom class names are skipped |
-| [mzPAF](https://www.psidev.info/mzpaf) | 1.0 |mzannotate | ✅ | ✅ | |
+| [mzPAF](https://www.psidev.info/mzpaf) | 1.0 |mzannotate | ✅ | ✅ | Has a strict mode |
 | [mzSpecLib](https://www.psidev.info/mzspeclib) | 1.0 | mzannotate | ✅ | ✅ | Not all metadata is used |
 | FASTA | - | mzident | ✅ | ❌ | |
 | [mzTab](https://www.psidev.info/mztab-specifications) | 1.0 | mzident | ✅ | ✅ | Peptides and small molecules are ignored |

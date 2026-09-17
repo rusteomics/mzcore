@@ -432,7 +432,7 @@ impl<Mode: MassOutputMode> Display for Fragment<Mode> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{}@{}{:+}{}",
+            "{}@{}^{}{}",
             self.ion,
             self.mz(MassMode::Monoisotopic)
                 .map_or(String::new(), |mz| mz.value.to_string()),
