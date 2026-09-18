@@ -508,7 +508,7 @@ impl MzTabPSM {
                                                 engine,
                                                 score,
                                                 metadata
-                                                    .psm_search_engines
+                                                    .psm_search_engines_scores
                                                     .get(i)
                                                     .ok_or_else(|| {
                                                         BoxedError::new(
@@ -919,7 +919,7 @@ fn parse_metadata<'a>(
             }
             m if m.starts_with("psm_search_engine_score[") && m.ends_with(']') => {
                 let term = CVTerm::from_str(&line[fields[2].clone()])?;
-                metadata.psm_search_engines.push(term);
+                metadata.psm_search_engines_scores.push(term);
             }
             m if m.starts_with("protein_search_engine_score[") && m.ends_with(']') => {
                 let term = CVTerm::from_str(&line[fields[2].clone()])?;

@@ -150,9 +150,19 @@ impl<W: Write> MzTabWriter<W, Initial> {
                 .filter_map(|p| p.1.as_ref().map(|(_, t)| t.term.clone().into()))
                 .unique(),
         );
-        header.psm_search_engines.extend(
+        header.psm_search_engines_scores.extend(
             psms.iter()
-                .filter_map(|p| p.original_confidence().map(|(_, t)| t.into()))
+                .flat_map(|p| {
+                    p.original_confidence().map(|(_, t)| t.clone().into()).into_iter().chain(
+                        p.other_scores().into_iter().flat_map(|s| {
+                            s.into_iter()
+                                .map(|(_, t)| t)
+                                .cloned()
+                                .map(|t| t.into())
+                                .collect::<Vec<CVTerm>>()
+                        }),
+                    )
+                })
                 .unique(),
         );
         let writer = Self::new(writer, header);
@@ -334,7 +344,7 @@ impl<W: Write> MzTabWriter<W, Initial> {
                 "MTD\tprotein_search_engine_score[{i}]\t{search_engine}",
             )?;
         }
-        for (i, search_engine) in self.metadata.psm_search_engines.iter().enumerate() {
+        for (i, search_engine) in self.metadata.psm_search_engines_scores.iter().enumerate() {
             let i = i + 1;
             writeln!(
                 self.writer,
@@ -535,8 +545,8 @@ pub struct MzTabMetadata {
     pub ms_runs: ThinVec<MzTabMSRun>,
     /// The protein search engines
     pub protein_search_engines: ThinVec<CVTerm>,
-    /// The PSM search engines
-    pub psm_search_engines: ThinVec<CVTerm>,
+    /// The PSM search engines scores
+    pub psm_search_engines_scores: ThinVec<CVTerm>,
 }
 
 impl mzcore::space::Space for MzTabMetadata {
@@ -566,7 +576,7 @@ impl mzcore::space::Space for MzTabMetadata {
             + self.colunit_psm.space()
             + self.ms_runs.space()
             + self.protein_search_engines.space()
-            + self.psm_search_engines.space())
+            + self.psm_search_engines_scores.space())
         .set_total::<Self>()
     }
 }
@@ -1083,7 +1093,7 @@ pub enum MzTabWriteError {
     /// a [`SpectrumIds::FileNotKnown`] is given
     MissingMSRun(Option<PathBuf>),
     /// This PSM search engine term is not written in the header for this file
-    MissingSearchEngine(Term),
+    MissingSearchEngineScore(Term),
     /// PSMs were already written before but the custom columns definition is different
     MultipleDifferentPSMHeaders,
 }
@@ -1118,7 +1128,7 @@ impl Display for MzTabWriteError {
                 write!(f, "Missing MS run for raw file without a defined path")
             }
             Self::MissingMSRun(Some(run)) => write!(f, "Missing MS run: {}", run.display()),
-            Self::MissingSearchEngine(engine) => {
+            Self::MissingSearchEngineScore(engine) => {
                 write!(
                     f,
                     "Missing search engine: {}|{}",
@@ -1157,7 +1167,7 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
     ) -> Result<MzTabWriter<W, PSMsWritten>, MzTabWriteError> {
         let psh = format!(
             "PSH\tsequence\tPSM_ID\taccession\tunique\tdatabase\tdatabase_version\tsearch_engine\t{}\tmodifications\tspectra_ref\tretention_time\tcharge\texp_mass_to_charge\tcalc_mass_to_charge\tpre\tpost\tstart\tend\treliability\turi\topt_global_{}{}",
-            (1..=self.metadata.psm_search_engines.len())
+            (1..=self.metadata.psm_search_engines_scores.len())
                 .map(|i| format!("search_engine_score[{i}]"))
                 .join("\t"),
             MzTabOptionalColumnName::Term(mzcv::term!(MS:1003984|amino acid confidence level)),
@@ -1280,34 +1290,41 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
                             )
                         ),
                         search_engine_score = {
+                            let mut scores = vec![
+                                "null".to_string();
+                                self.metadata.psm_search_engines_scores.len()
+                            ];
+
                             if let Some((v, term)) = psm.original_confidence() {
                                 let Some(pos) = self
                                     .metadata
-                                    .psm_search_engines
+                                    .psm_search_engines_scores
                                     .iter()
                                     .position(|s| s.term == term)
                                 else {
-                                    return Err(MzTabWriteError::MissingSearchEngine(term));
+                                    return Err(MzTabWriteError::MissingSearchEngineScore(term));
                                 };
 
-                                format!(
-                                    "{}{}{v}{}{}",
-                                    (1..pos).map(|_| "null").join("\t"),
-                                    if pos > 1 { "\t" } else { "" },
-                                    if pos < self.metadata.psm_search_engines.len() - 1 {
-                                        "\t"
-                                    } else {
-                                        ""
-                                    },
-                                    (pos + 1..self.metadata.psm_search_engines.len())
-                                        .map(|_| "null")
-                                        .join("\t")
-                                )
-                            } else {
-                                (0..self.metadata.psm_search_engines.len())
-                                    .map(|_| "null")
-                                    .join("\t")
+                                scores[pos] = v.to_string();
                             }
+                            if let Some(other) = psm.other_scores() {
+                                for (v, term) in other.as_ref() {
+                                    let Some(pos) = self
+                                        .metadata
+                                        .psm_search_engines_scores
+                                        .iter()
+                                        .position(|s| s.term == *term)
+                                    else {
+                                        return Err(MzTabWriteError::MissingSearchEngineScore(
+                                            term.clone(),
+                                        ));
+                                    };
+
+                                    scores[pos] = v.to_string();
+                                }
+                            }
+
+                            scores.join("\t")
                         },
                         modifications = if mods.is_empty() { "null" } else { &mods },
                         spectra_ref = match psm.scans() {
