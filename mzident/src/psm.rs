@@ -580,6 +580,7 @@ impl_metadata!(
         fn search_engine(&self) -> Option<mzcv::Term>;
         fn original_confidence(&self) -> Option<(f64, mzcv::Term)>;
         fn original_local_confidence(&self) -> Option<&[f64]>;
+        fn other_scores(&self) -> Option<Cow<'_, [(f64, mzcv::Term)]>>;
         fn charge(&self) -> Option<Charge>;
         fn mode(&self) -> Option<Cow<'_, str>>;
         fn retention_time(&self) -> Option<Time>;
@@ -608,6 +609,7 @@ impl_metadata!(
         fn search_engine(&self) -> Option<mzcv::Term>;
         fn original_confidence(&self) -> Option<(f64, mzcv::Term)>;
         fn original_local_confidence(&self) -> Option<&[f64]>;
+        fn other_scores(&self) -> Option<Cow<'_, [(f64, mzcv::Term)]>>;
         fn charge(&self) -> Option<Charge>;
         fn mode(&self) -> Option<Cow<'_, str>>;
         fn fragmentation_model(&self) -> Option<mzannotate::annotation::model::BuiltInFragmentationModel>;

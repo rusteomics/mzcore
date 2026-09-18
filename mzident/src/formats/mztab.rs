@@ -60,9 +60,10 @@ pub struct MzTabPSM {
     /// The protein database used for the search together with the version of the
     /// database.
     pub database: Option<(String, Option<String>)>,
-    /// The search engines that identified this peptide, alongside their identified score and the
-    /// CV term describing the score
-    pub search_engine: Vec<(CVTerm, Option<f64>, CVTerm)>,
+    /// The search engines that identified this peptide
+    pub search_engines: Vec<CVTerm>,
+    /// The scores given to this PSM by all the different search engines
+    pub search_engine_scores: Vec<(f64, CVTerm)>,
     /// The estimated reliability of the PSM. (Optional parameter)
     pub reliability: Option<Reliability>,
     /// The retention time for this peptide.
@@ -95,7 +96,7 @@ impl mzcore::space::Space for MzTabPSM {
             + self.protein.space()
             + self.unique.space()
             + self.database.space()
-            + self.search_engine.space()
+            + self.search_engines.space()
             + self.reliability.space()
             + self.rt.space()
             + self.z.space()
@@ -473,7 +474,7 @@ impl MzTabPSM {
                         }),
                     )
                 }),
-            search_engine: {
+            search_engines: {
                 let (value, range) =
                     line.required_column("search_engine").map_err(BoxedError::to_owned)?;
 
@@ -482,49 +483,63 @@ impl MzTabPSM {
                 } else {
                     value
                         .split('|')
-                        .enumerate()
-                        .map(|(i, s)| {
-                            line.optional_column(&format!("search_engine_score[{}]", i + 1))
-                                .and_then(|(v, inner_range)| {
-                                    (!v.eq_ignore_ascii_case("null")).then(|| {
-                                        v.parse::<f64>().map_err(|err| {
-                                            BoxedError::new(
-                                                BasicKind::Error,
-                                                "Invalid mzTab search engine score",
-                                                format!("The search engine score can not be parsed as f64: {err}"),
-                                                line.context.clone().add_highlight((0, inner_range)),
-                                            )
-                                        })
-                                    })
-                                })
-                                .transpose()
-                                .and_then(|score| {
-                                    CVTerm::from_str(s)
-                                        .map_err(|e| {
-                                            e.replace_context(line.context.clone().add_highlight((0, range.clone())))
-                                        })
-                                        .and_then(|engine| {
-                                            Ok((
-                                                engine,
-                                                score,
-                                                metadata
-                                                    .psm_search_engines_scores
-                                                    .get(i)
-                                                    .ok_or_else(|| {
-                                                        BoxedError::new(
-                                                            BasicKind::Error,
-                                                            "Missing search engine score type",
-                                                            "All search engines require a defined search type",
-                                                            line.context.clone().add_highlight((0, range.clone())),
-                                                        )
-                                                    })?
-                                                    .clone(),
-                                            ))
-                                        })
-                                })
+                        .map(|s| {
+                            CVTerm::from_str(s).map_err(|e| {
+                                e.replace_context(
+                                    line.context.clone().add_highlight((0, range.clone())),
+                                )
+                            })
                         })
                         .collect::<Result<Vec<_>, BoxedError<'_, BasicKind>>>()?
                 }
+            },
+            search_engine_scores: {
+                line.header
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(index, h)| {
+                        if let Some(tail) = h.strip_prefix("search_engine_score[")
+                            && let Some(middle) = tail.strip_suffix("]")
+                            && let Ok(num) = middle.parse::<usize>()
+                        {
+                            Some((index, num.saturating_sub(1)))
+                        } else {
+                            None
+                        }
+                    })
+                    .filter_map(|(index, num)| {
+                        metadata.psm_search_engines_scores.get(num).map_or_else(
+                            || {
+                                Some(Err(BoxedError::new(
+                                    BasicKind::Error,
+                                    "Missing search engine score type",
+                                    "All search engines require a defined search type",
+                                    line.context
+                                        .clone()
+                                        .add_highlight((0, line.fields[index].clone())),
+                                )))
+                            },
+                            |term| {
+                                let value = &line.line[line.fields[index].clone()];
+                                if value.eq_ignore_ascii_case("null") {
+                                    None
+                                } else {
+                                    match value.parse::<f64>() {
+                                        Ok(value) => Some(Ok((value, term.clone()))),
+                                        Err(err) => Some(Err(BoxedError::new(
+                                            BasicKind::Error,
+                                            "Invalid number in search engine score",
+                                            format!("The search engine score {err}"),
+                                            line.context
+                                                .clone()
+                                                .add_highlight((0, line.fields[index].clone())),
+                                        ))),
+                                    }
+                                }
+                            },
+                        )
+                    })
+                    .collect::<Result<Vec<_>, _>>()?
             },
             reliability: line
                 .optional_column("reliability")
@@ -2104,10 +2119,10 @@ impl std::fmt::Display for PSMLine<'_> {
 impl From<MzTabPSM> for PSM<SimpleLinear, MaybePeptidoform> {
     fn from(value: MzTabPSM) -> Self {
         Self {
-            score: (!value.search_engine.is_empty())
+            score: (!value.search_engine_scores.is_empty())
                 .then(|| {
-                    (value.search_engine.iter().filter_map(|(_, s, _)| *s).sum::<f64>()
-                        / value.search_engine.len() as f64)
+                    (value.search_engine_scores.iter().map(|(s, _)| *s).sum::<f64>()
+                        / value.search_engine_scores.len() as f64)
                         .clamp(-1.0, 1.0)
                 })
                 .filter(|v| !v.is_nan()),
@@ -2157,7 +2172,7 @@ impl CVTerm {
                     );
                 }
             }
-            let comment = field_index.map_or(range.end..range.end, |range| range);
+            let comment = field_index.unwrap_or(range.end..range.end);
 
             if line[id.clone()].eq_ignore_ascii_case(required_id) {
                 Ok(comment)
@@ -2335,16 +2350,13 @@ impl PSMMetaData for MzTabPSM {
     }
 
     fn search_engine(&self) -> Option<Term> {
-        self.search_engine.first().map(|(t, ..)| t.term.clone())
+        self.search_engines.first().map(|t| t.term.clone())
     }
 
     fn confidence(&self) -> Option<f64> {
-        (!self.search_engine.is_empty())
-            .then(|| {
-                (self.search_engine.iter().filter_map(|(_, s, _)| *s).sum::<f64>()
-                    / self.search_engine.len() as f64)
-                    .clamp(-1.0, 1.0)
-            })
+        self.search_engine_scores
+            .first()
+            .map(|(s, _)| s.clamp(-1.0, 1.0))
             .filter(|v| !v.is_nan())
     }
 
@@ -2353,13 +2365,25 @@ impl PSMMetaData for MzTabPSM {
     }
 
     fn original_confidence(&self) -> Option<(f64, Term)> {
-        self.search_engine
-            .first()
-            .and_then(|(_, s, t)| s.map(|s| (s, t.term.clone())))
+        self.search_engine_scores.first().map(|(s, t)| (*s, t.term.clone()))
     }
 
     fn original_local_confidence(&self) -> Option<&[f64]> {
         self.local_confidence.as_deref()
+    }
+
+    fn other_scores(&self) -> Option<Cow<'_, [(f64, Term)]>> {
+        let scores = self
+            .search_engine_scores
+            .iter()
+            .skip(1)
+            .map(|(v, t)| (*v, t.term.clone()))
+            .collect::<Vec<_>>();
+        if scores.is_empty() {
+            None
+        } else {
+            Some(scores.into())
+        }
     }
 
     fn charge(&self) -> Option<Charge> {
