@@ -358,10 +358,16 @@ impl MonoSaccharide {
     // }
 }
 
+enum ModLocation {
+    Single(Option<u8>),
+    Double(Option<u8>, Option<u8>),
+}
+
 trait ParseHelper {
     fn ignore(self, ignore: &[&str]) -> usize;
     fn take_any<T>(self, parse_list: &[(&str, T)], f: impl FnMut(&T)) -> Option<usize>;
     fn parse_location(self) -> (usize, usize, bool, Option<u8>);
+    fn parse_location_properly(self) -> (usize, Vec<ModLocation>);
 }
 
 impl ParseHelper for &str {
@@ -447,6 +453,51 @@ impl ParseHelper for &str {
             }
         }
         (index, amount, double, location)
+    }
+
+    // Get a location, return the new index, the amount of the mod to place and if it is doubly
+    // linked or not
+    fn parse_location_properly(self) -> (usize, Vec<ModLocation>) {
+        let bytes = self.as_bytes();
+        let mut index = 0;
+        let mut amount = 1;
+        let mut double = false;
+        let mut locations = Vec::new();
+        let possibly_unknown_number = |n: u8| n.is_ascii_digit() || n == b'?';
+
+        // if bytes[0] == b'?' {
+        //     index += 1; // TODO: Unsure what this signifies exactly, and fix that first before
+        // using this function }
+
+        let mut separator = None;
+        while possibly_unknown_number(bytes[index]) {
+            let l = if bytes[index] == b'?' {
+                None
+            } else {
+                Some(bytes[index] - b'0')
+            };
+            if bytes[index + 1] == b'-' && possibly_unknown_number(bytes[index + 2]) {
+                let l2 = if bytes[index + 2] == b'?' {
+                    None
+                } else {
+                    Some(bytes[index] - b'0')
+                };
+                index += 3;
+                locations.push(ModLocation::Double(l, l2));
+            } else {
+                index += 1;
+                locations.push(ModLocation::Single(l));
+            }
+            if separator.is_none() && bytes[index] == b',' || bytes[index] == b'/' {
+                separator = Some(bytes[index])
+            }
+            if separator.is_some_and(|s| s == bytes[index]) {
+                index += 1;
+            } else {
+                break;
+            }
+        }
+        (index, locations)
     }
 }
 

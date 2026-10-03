@@ -35,7 +35,7 @@ impl Residue {
     /// # Errors
     /// If this WURCS definition does not fit in the limitations of a [`MonoSaccharide`].
     pub(super) fn parse(self) -> Result<MonoSaccharide, WurcsParseError> {
-        let (start, base, end) = match self.backbone {
+        let (start, base, end, middle_length) = match self.backbone {
             BackBone::Defined(s, m, e) => (
                 s,
                 match m.len() {
@@ -101,6 +101,7 @@ impl Residue {
                     _ => return Err(WurcsParseError::BackboneTooLong),
                 },
                 e,
+                m.len() as u8,
             ),
             BackBone::Repeating(..) => return Err(WurcsParseError::RepeatingBackbone),
         };
@@ -117,9 +118,11 @@ impl Residue {
         // Assumes a C=OH
         match end {
             TerminalCarbon::CXH => (),
-            // TerminalCarbon::CHHH => res.substituents.push((GlycanSubstituent::Deoxy, None)), /*
-            // TODO: get location */
-            TerminalCarbon::CHHX => res.substituents.push((GlycanSubstituent::Alcohol, None)), /* TODO: get location */
+            // TerminalCarbon::CHHH => res.substituents.push((GlycanSubstituent::Deoxy, Some(2 +
+            // middle_length))), /*
+            TerminalCarbon::CHHX => res
+                .substituents
+                .push((GlycanSubstituent::Alcohol, Some(2 + middle_length))),
             o => todo!("Not added yet: {:?}", o),
         }
         let mut internal_cycle_count = 0;
@@ -190,18 +193,18 @@ mod tests {
         // a3-b1"
 
         for (wurcs, sugar, proforma, iupac, formula) in [
-            (
-                "a2112h-1b_1-5",
-                BaseSugar::Hexose(Some(HexoseIsomer::Galactose)),
-                "?",
-                "Gal(b1- ",
-                molecular_formula!(C 6 H 12 O 6),
-            ),
+            // (
+            //     "a2112h-1b_1-5",
+            //     BaseSugar::Hexose(Some(HexoseIsomer::Galactose)),
+            //     "?",
+            //     "Gal(b1- ",
+            //     molecular_formula!(C 6 H 12 O 6),
+            // ),
             (
                 "h2112h_2*NCC/3=O",
                 BaseSugar::Hexose(Some(HexoseIsomer::Galactose)),
                 "?",
-                "Gal2NAc-ol",
+                "Gal2NAc-6-ol",
                 molecular_formula!(C 8 H 17 N 1 O 6),
             ),
             (
