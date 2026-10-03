@@ -269,24 +269,27 @@ impl MonoSaccharide {
             let mut single_amount = 0;
             let mut double_amount = 0;
             // Location
-            let (offset, mut amount, mut double, location) = line[index..].parse_location();
-            index += offset;
-            if double {
-                double_amount = amount;
-            } else {
-                single_amount = amount;
-            }
+            let (offset, mut locations) = parse_locations(
+                &line,
+                index,
+                &Context::default().lines(0, original_line).line_index(line_index),
+            )?;
+            index = offset;
             if bytes[index] == b':' {
                 // additional place
-                let (offset, amt, dbl, _location) = line[index + 1..].parse_location();
-                index += offset + 1;
-                amount += amt;
-                if double {
-                    double_amount += amount;
-                } else {
-                    single_amount += amount;
-                }
-                double |= dbl; // if any is double
+                let (offset, locs) = parse_locations(
+                    &line,
+                    index + 1,
+                    &Context::default().lines(0, original_line).line_index(line_index),
+                )?;
+                locations.extend_from_slice(&locs);
+                index = offset;
+            }
+            let double = locations.iter().any(|l| matches!(l, ModLocation::Double(_, _)));
+            if double {
+                double_amount += locations.len();
+            } else {
+                single_amount += locations.len();
             }
 
             index += line[index..].ignore(&["-"]);
@@ -319,14 +322,21 @@ impl MonoSaccharide {
             } else {
                 // Mod or an element
                 if let Some(o) = line[index..].take_any(POSTFIX_SUBSTITUENTS, |e| {
-                    sugar.substituents.extend(std::iter::repeat_n((*e, location), amount));
+                    sugar.substituents.extend(locations.iter().map(|l| {
+                        (*e, match l {
+                            ModLocation::Single(l) => *l,
+                            ModLocation::Double(l, _) => *l, // TODO: handle double
+                        })
+                    }));
                 }) {
                     index += o;
                 } else if let Some(o) = line[index..].take_any(ELEMENT_PARSE_LIST, |e| {
-                    sugar.substituents.extend(std::iter::repeat_n(
-                        (GlycanSubstituent::Element(*e), location),
-                        amount,
-                    ));
+                    sugar.substituents.extend(locations.iter().map(|l| {
+                        (GlycanSubstituent::Element(*e), match l {
+                            ModLocation::Single(l) => *l,
+                            ModLocation::Double(l, _) => *l, // TODO: handle double
+                        })
+                    }));
                 }) {
                     index += o;
                 } else {
@@ -358,6 +368,7 @@ impl MonoSaccharide {
     // }
 }
 
+#[derive(Debug, Clone)]
 enum ModLocation {
     Single(Option<u8>),
     Double(Option<u8>, Option<u8>),
@@ -366,8 +377,6 @@ enum ModLocation {
 trait ParseHelper {
     fn ignore(self, ignore: &[&str]) -> usize;
     fn take_any<T>(self, parse_list: &[(&str, T)], f: impl FnMut(&T)) -> Option<usize>;
-    fn parse_location(self) -> (usize, usize, bool, Option<u8>);
-    fn parse_location_properly(self) -> (usize, Vec<ModLocation>);
 }
 
 impl ParseHelper for &str {
@@ -392,113 +401,70 @@ impl ParseHelper for &str {
         }
         found
     }
+}
 
-    // Get a location, return the new index, the amount of the mod to place and if it is doubly
-    // linked or not
-    fn parse_location(self) -> (usize, usize, bool, Option<u8>) {
-        let bytes = self.as_bytes();
-        let mut index = 0;
-        let mut amount = 1;
-        let mut double = false;
-        let mut location = None;
-        let possibly_unknown_number = |n: u8| n.is_ascii_digit() || n == b'?';
-        let number_or_slash = |n: &u8| n.is_ascii_digit() || *n == b'/';
-        let possibly_unknown_number_or_comma = |n: &u8| possibly_unknown_number(*n) || *n == b',';
+fn parse_locations<'a>(
+    line: &str,
+    start: usize,
+    base_context: &Context<'a>,
+) -> Result<(usize, Vec<ModLocation>), BoxedError<'a, BasicKind>> {
+    let bytes = line.as_bytes();
+    let mut index = start;
+    let mut locations = Vec::new();
+    let possibly_unknown_number = |n: u8| n.is_ascii_digit() || n == b'?';
 
-        if possibly_unknown_number(bytes[0]) && bytes.len() > 1 {
-            match bytes[1] {
-                b',' => {
-                    let num = bytes[1..]
-                        .iter()
-                        .copied()
-                        .take_while(possibly_unknown_number_or_comma)
-                        .count();
-                    index += num + 1;
-                    amount = num / 2 + 1;
-                    // X,X{mod} (or 3/4/5/etc mods)
-                }
-                b'-' if bytes[index] != b'?' => {
-                    index += 7;
-                    double = true;
-                } // X-X,X-X (Py)
-                b'/' => {
-                    let num = bytes[2..].iter().copied().take_while(number_or_slash).count();
-                    index += num + 2;
-                    // X/X/X...{mod} multiple possible locations
-                }
-                c if possibly_unknown_number(c) && bytes[0] == b'?' => {
-                    if bytes[2] == b',' {
-                        let num = bytes[2..]
-                            .iter()
-                            .copied()
-                            .take_while(possibly_unknown_number_or_comma)
-                            .count();
-                        index += num + 2;
-                        amount = num / 2 + 1;
-                        // ?X,X{mod} (or 3/4/5/etc mods)
-                    } else if bytes[2] == b'/' {
-                        let num = bytes[3..].iter().copied().take_while(number_or_slash).count();
-                        index += num + 3;
-                        // ?X/X{mod} multiple possible locations
-                    } else {
-                        index += 2; // ?X{mod}
-                    }
-                }
-                _ => {
-                    if bytes[0].is_ascii_digit() {
-                        location = Some(bytes[0] - b'0');
-                    }
-                    index += 1; // X{mod}
-                }
-            }
-        }
-        (index, amount, double, location)
+    if bytes[index] == b'?' && bytes[index + 1].is_ascii_digit() {
+        index += 1; // Unsure what this signifies exactly
+    } else if bytes[index] == b'?' && bytes[index + 1] == b'?' {
+        index += 2; // This occurs some times, not really sure why the double sign are needed though
+        locations.push(ModLocation::Single(None));
+        return Ok((index, locations));
     }
 
-    // Get a location, return the new index, the amount of the mod to place and if it is doubly
-    // linked or not
-    fn parse_location_properly(self) -> (usize, Vec<ModLocation>) {
-        let bytes = self.as_bytes();
-        let mut index = 0;
-        let mut amount = 1;
-        let mut double = false;
-        let mut locations = Vec::new();
-        let possibly_unknown_number = |n: u8| n.is_ascii_digit() || n == b'?';
-
-        // if bytes[0] == b'?' {
-        //     index += 1; // TODO: Unsure what this signifies exactly, and fix that first before
-        // using this function }
-
-        let mut separator = None;
-        while possibly_unknown_number(bytes[index]) {
-            let l = if bytes[index] == b'?' {
+    let mut separator = None;
+    while possibly_unknown_number(bytes[index]) {
+        let mut num: u8 = 0;
+        let start = index;
+        while bytes[index].is_ascii_digit() {
+            let Some(n) = num.checked_mul(10).and_then(|n| n.checked_add(bytes[index] - b'0'))
+            else {
+                return Err(BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid glycan modification location",
+                    "The location number is too high the maximum value is 255.",
+                    base_context.clone().add_highlight((0, start..index)),
+                ));
+            };
+            num = n;
+            index += 1;
+        }
+        let l = if bytes[index] == b'?' {
+            index += 1;
+            None
+        } else {
+            Some(num)
+        };
+        if bytes[index] == b'-' && possibly_unknown_number(bytes[index + 1]) {
+            let l2 = if bytes[index + 1] == b'?' {
                 None
             } else {
-                Some(bytes[index] - b'0')
+                Some(bytes[index + 1] - b'0') // Might need to handle longer numbers as well
             };
-            if bytes[index + 1] == b'-' && possibly_unknown_number(bytes[index + 2]) {
-                let l2 = if bytes[index + 2] == b'?' {
-                    None
-                } else {
-                    Some(bytes[index] - b'0')
-                };
-                index += 3;
-                locations.push(ModLocation::Double(l, l2));
-            } else {
-                index += 1;
-                locations.push(ModLocation::Single(l));
-            }
-            if separator.is_none() && bytes[index] == b',' || bytes[index] == b'/' {
-                separator = Some(bytes[index])
-            }
-            if separator.is_some_and(|s| s == bytes[index]) {
-                index += 1;
-            } else {
-                break;
-            }
+            index += 2;
+            locations.push(ModLocation::Double(l, l2));
+        } else {
+            locations.push(ModLocation::Single(l));
         }
-        (index, locations)
+        if separator.is_none() && bytes[index] == b',' || bytes[index] == b'/' {
+            separator = Some(bytes[index])
+        }
+        if separator.is_some_and(|s| s == bytes[index]) {
+            index += 1;
+        } else {
+            break;
+        }
     }
+    Ok((index, locations))
 }
 
 /// The base sugar of a monosaccharide, optionally with the isomeric state saved as well.
