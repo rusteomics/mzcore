@@ -39,7 +39,8 @@ pub trait PSMMetaData {
     /// Get the original confidence and the term identifying the type of original confidence
     fn original_confidence(&self) -> Option<(f64, Term)>;
 
-    /// Get all other scores (excluding the original_confidence) with their term to describe the type
+    /// Get all other scores (excluding the original_confidence) with their term to describe the
+    /// type
     fn other_scores(&self) -> Option<Cow<'_, [(f64, Term)]>> {
         None
     }
