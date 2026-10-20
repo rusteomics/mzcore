@@ -222,8 +222,9 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity, Mode: MassOutputM
             })
             .collect::<Vec<_>>();
 
+        let end = (peptidoform.len() - 1).min(*internal_range.end() + 1);
         for n in 1..peptidoform.len().saturating_sub(*internal_range.start() + 1) {
-            for c in n..(peptidoform.len() - 1).min(*internal_range.end() + 1) {
+            for c in n + 2.min(end)..end {
                 let o_n = options[n];
                 let o_c = options[c];
                 if !(o_c.0 || o_c.1 || o_c.2 || o_n.3 || o_n.4 || o_n.5) {
