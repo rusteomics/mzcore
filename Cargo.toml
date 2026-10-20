@@ -48,7 +48,7 @@ directories = "6.0"
 flate2 = "1.0"
 indexmap = "2.11"
 itertools = ">0.12, <=0.15"
-mzdata = { version = ">0.59, <=0.65", default-features = false, features = ["nalgebra"] }
+mzdata = { version = ">0.59, <=0.67", default-features = false, features = ["nalgebra"] }
 num-traits = ">0.2.15, <=0.2"
 ndarray = "0.17"
 ordered-float = { version = "5.0", features = ["serde"] }
