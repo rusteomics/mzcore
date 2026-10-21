@@ -34,6 +34,7 @@ pub enum KnownFileFormat {
     PLink(PLinkVersion),
     PowerNovo(PowerNovoVersion),
     Proteoscape(ProteoscapeVersion),
+    PsmUtils(PsmUtilsVersion),
     PUniFind(PUniFindVersion),
     Sage(SageVersion),
     MSFragger(MSFraggerVersion),
@@ -64,6 +65,7 @@ impl KnownFileFormat {
             Self::PLink(_) => "pLink",
             Self::PowerNovo(_) => "PowerNovo",
             Self::Proteoscape(_) => "Proteoscape",
+            Self::PsmUtils(_) => "psm_utils",
             Self::PUniFind(_) => "pUniFind",
             Self::Sage(_) => "Sage",
             Self::MSFragger(_) => "MSFragger",
@@ -94,6 +96,7 @@ impl KnownFileFormat {
             Self::PLink(version) => Some(version.to_string()),
             Self::PowerNovo(version) => Some(version.to_string()),
             Self::Proteoscape(version) => Some(version.to_string()),
+            Self::PsmUtils(version) => Some(version.to_string()),
             Self::PUniFind(version) => Some(version.to_string()),
             Self::Sage(version) => Some(version.to_string()),
             Self::MSFragger(version) => Some(version.to_string()),
@@ -139,6 +142,7 @@ impl KnownFileFormat {
             Self::PLink(PLinkVersion::V2_3) => Some(term!(MS:1003432|pLink2)),
             Self::PowerNovo(_) => Some(term!(MS:1004005|PowerNovo)),
             Self::Proteoscape(_) => Some(term!(MS:1004009|ProteoScape)),
+            Self::PsmUtils(_) => None,
             Self::PUniFind(_) => Some(term!(MS:1004006|pUniFind)),
             Self::Sage(_) => Some(term!(MS:1004007|Sage)),
             Self::MSFragger(MSFraggerVersion::V4_2) => Some(term!(MS:1003014|MSFragger)),
@@ -288,6 +292,7 @@ impl From<KnownFileFormat> for FileFormat {
             KnownFileFormat::PLink(version) => Self::PLink(Some(version)),
             KnownFileFormat::PowerNovo(version) => Self::PowerNovo(Some(version)),
             KnownFileFormat::Proteoscape(version) => Self::Proteoscape(Some(version)),
+            KnownFileFormat::PsmUtils(version) => Self::PsmUtils(Some(version)),
             KnownFileFormat::PUniFind(version) => Self::PUniFind(Some(version)),
             KnownFileFormat::Sage(version) => Self::Sage(Some(version)),
             KnownFileFormat::MSFragger(version) => Self::MSFragger(Some(version)),
@@ -322,6 +327,7 @@ pub enum FileFormat {
     PLink(Option<PLinkVersion>),
     PowerNovo(Option<PowerNovoVersion>),
     Proteoscape(Option<ProteoscapeVersion>),
+    PsmUtils(Option<PsmUtilsVersion>),
     PUniFind(Option<PUniFindVersion>),
     Sage(Option<SageVersion>),
     MSFragger(Option<MSFraggerVersion>),
@@ -426,6 +432,9 @@ impl FileFormat {
             }
             Self::Proteoscape(version) => {
                 ProteoscapePSM::parse_file(path, ontologies, false, version).map(PSMIter::into_box)
+            }
+            Self::PsmUtils(version) => {
+                PsmUtilsPSM::parse_file(path, ontologies, false, version).map(PSMIter::into_box)
             }
             Self::PUniFind(version) => {
                 PUniFindPSM::parse_file(path, ontologies, false, version).map(PSMIter::into_box)

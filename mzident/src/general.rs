@@ -104,15 +104,19 @@ pub fn open_psm_file<'a>(
                 PiPrimeNovoPSM::parse_file(path, ontologies, keep_all_columns, None)
                     .map(PSMIter::into_box)
                     .map_err(|pne| (se, pe, mfe, pse, ne, pne))
+            }).or_else(|(se, pe, mfe, pse, ne, pne)| {
+                PsmUtilsPSM::parse_file(path, ontologies, keep_all_columns, None)
+                    .map(PSMIter::into_box)
+                    .map_err(|pue| (se, pe, mfe, pse, ne, pne, pue))
             })
-            .map_err(|(se, pe, mfe, pse, ne, pne)| {
+            .map_err(|(se, pe, mfe, pse, ne, pne, pue)| {
                 BoxedError::new(
                     BasicKind::Error,
                     "Unknown file format",
-                    "Could not be recognised a Sage, PepNet, MSFragger, NovoB, π-PrimeNovo or Proteoscape file",
+                    "Could not be recognised a Sage, PepNet, MSFragger, NovoB, π-PrimeNovo, Proteoscape, or psm_utils file",
                     Context::default().source(path.to_string_lossy()).to_owned(),
                 )
-                .add_underlying_errors(vec![se, pe, mfe, pse, ne, pne])
+                .add_underlying_errors(vec![se, pe, mfe, pse, ne, pne, pue])
             }),
         Some("psmtsv") => MetaMorpheusPSM::parse_file(path, ontologies, keep_all_columns, None)
             .map(PSMIter::into_box)

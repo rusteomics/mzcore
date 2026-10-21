@@ -78,6 +78,8 @@ pub enum PSMData {
     PowerNovo(PowerNovoPSM),
     /// Proteoscape metadata
     Proteoscape(ProteoscapePSM),
+    /// psm_utils metadata
+    PsmUtils(PsmUtilsPSM),
     /// pUniFind metadata
     PUniFind(PUniFindPSM),
     /// Sage metadata
@@ -118,6 +120,7 @@ impl<PeptidoformAvailability> PSM<Linear, PeptidoformAvailability> {
                     None
                 }
             }
+            PSMData::PsmUtils(PsmUtilsPSM { peptidoform, .. }) => Some(peptidoform),
             PSMData::SpectrumSequenceList(SpectrumSequenceListPSM { peptide, .. })
             | PSMData::PiPrimeNovo(PiPrimeNovoPSM { peptide, .. })
             | PSMData::DeepNovoFamily(DeepNovoFamilyPSM { peptide, .. }) => {
@@ -197,6 +200,7 @@ impl<PeptidoformAvailability> PSM<SimpleLinear, PeptidoformAvailability> {
                     None
                 }
             }
+            PSMData::PsmUtils(PsmUtilsPSM { peptidoform, .. }) => peptidoform.as_simple_linear(),
             PSMData::SpectrumSequenceList(SpectrumSequenceListPSM { peptide, .. })
             | PSMData::PiPrimeNovo(PiPrimeNovoPSM { peptide, .. })
             | PSMData::DeepNovoFamily(DeepNovoFamilyPSM { peptide, .. }) => {
@@ -274,6 +278,7 @@ impl<PeptidoformAvailability> PSM<SemiAmbiguous, PeptidoformAvailability> {
                     None
                 }
             }
+            PSMData::PsmUtils(PsmUtilsPSM { peptidoform, .. }) => peptidoform.as_semi_ambiguous(),
             PSMData::SpectrumSequenceList(SpectrumSequenceListPSM { peptide, .. })
             | PSMData::PiPrimeNovo(PiPrimeNovoPSM { peptide, .. })
             | PSMData::DeepNovoFamily(DeepNovoFamilyPSM { peptide, .. }) => peptide.as_ref(),
@@ -351,6 +356,7 @@ impl<PeptidoformAvailability> PSM<UnAmbiguous, PeptidoformAvailability> {
                     None
                 }
             }
+            PSMData::PsmUtils(PsmUtilsPSM { peptidoform, .. }) => peptidoform.as_unambiguous(),
             PSMData::SpectrumSequenceList(SpectrumSequenceListPSM { peptide, .. })
             | PSMData::PiPrimeNovo(PiPrimeNovoPSM { peptide, .. })
             | PSMData::DeepNovoFamily(DeepNovoFamilyPSM { peptide, .. }) => {
@@ -571,7 +577,7 @@ macro_rules! impl_metadata {
 }
 #[cfg(not(feature = "mzannotate"))]
 impl_metadata!(
-    formats: {BasicCSV,DeepNovoFamily,Fasta,MaxQuant,MetaMorpheus,InstaNovo,MzTab,NovoB,Novor,Opair,Peaks,PepNet,PiHelixNovo,PiPrimeNovo,PLGS,PLink,PowerNovo,Proteoscape,PUniFind,Sage,MSFragger,SpectrumSequenceList};
+    formats: {BasicCSV,DeepNovoFamily,Fasta,MaxQuant,MetaMorpheus,InstaNovo,MzTab,NovoB,Novor,Opair,Peaks,PepNet,PiHelixNovo,PiPrimeNovo,PLGS,PLink,PowerNovo,Proteoscape,PsmUtils,PUniFind,Sage,MSFragger,SpectrumSequenceList};
     functions: {
         fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>>;
         fn format(&self) -> KnownFileFormat;
@@ -600,7 +606,7 @@ impl_metadata!(
 
 #[cfg(feature = "mzannotate")]
 impl_metadata!(
-    formats: {BasicCSV,DeepNovoFamily,Fasta,MaxQuant,MetaMorpheus,InstaNovo,MzTab,NovoB,Novor,Opair,Peaks,PepNet,PiHelixNovo,PiPrimeNovo,PLGS,PLink,PowerNovo,Proteoscape,PUniFind,Sage,MSFragger,SpectrumSequenceList,AnnotatedSpectrum};
+    formats: {BasicCSV,DeepNovoFamily,Fasta,MaxQuant,MetaMorpheus,InstaNovo,MzTab,NovoB,Novor,Opair,Peaks,PepNet,PiHelixNovo,PiPrimeNovo,PLGS,PLink,PowerNovo,Proteoscape,PsmUtils,PUniFind,Sage,MSFragger,SpectrumSequenceList,AnnotatedSpectrum};
     functions: {
         fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>>;
         fn format(&self) -> KnownFileFormat;
@@ -658,6 +664,7 @@ impl mzcore::space::Space for PSMData {
             Self::PLink(data) => data.space(),
             Self::PowerNovo(data) => data.space(),
             Self::Proteoscape(data) => data.space(),
+            Self::PsmUtils(data) => data.space(),
             Self::PUniFind(data) => data.space(),
             Self::Sage(data) => data.space(),
             Self::SpectrumSequenceList(data) => data.space(),
