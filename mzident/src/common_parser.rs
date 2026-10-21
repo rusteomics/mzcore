@@ -256,6 +256,8 @@ pub(super) enum OptionalColumn {
     /// This column is required in this version (but as it is an `OptionalColumn` not in some other
     /// version)
     Required(&'static str),
+    /// Find the first column that has these exact start and end sequences
+    Pattern(&'static str, &'static str),
 }
 
 impl OptionalColumn {
@@ -270,6 +272,14 @@ impl OptionalColumn {
             Self::NotAvailable => Ok(None),
             Self::Optional(s) => Ok(source.column(s).ok()),
             Self::Required(s) => source.column(s).map(Some),
+            Self::Pattern(s, e) => Ok(source
+                .headers()
+                .position(|h| h.starts_with(s) && h.ends_with(e))
+                .map(|i| Location {
+                    line: source,
+                    range: source.fields[i].1.clone(),
+                    column: Some(&source.fields[i].0),
+                })),
         }
     }
 }

@@ -1,4 +1,4 @@
-use std::{borrow::Cow, marker::PhantomData, ops::Range};
+use std::{borrow::Cow, marker::PhantomData, ops::Range, path::PathBuf};
 
 use mzcore::{
     csv::{CsvLine, parse_csv},
@@ -9,13 +9,19 @@ use mzcore::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    BoxedIdentifiedPeptideIter, KnownFileFormat, MaybePeptidoform, PSM, PSMData,
-    PSMFileFormatVersion, PSMMetaData, PSMSource, SpectrumId, SpectrumIds, common_parser::Location,
+    BoxedIdentifiedPeptideIter, FastaIdentifier, KnownFileFormat, MaybePeptidoform, PSM, PSMData,
+    PSMFileFormatVersion, PSMMetaData, PSMSource, SpectrumId, SpectrumIds,
+    common_parser::{Location, OptionalColumn, OptionalLocation},
 };
 
 static NUMBER_ERROR: (&str, &str) = (
     "Invalid psm_utils line",
     "This column is not a number but it is required to be a number in this format",
+);
+
+static FASTA_ID_ERROR: (&str, &str) = (
+    "Invalid psm_utils line",
+    "This column is not a valid fasta identifier, some part that needs to be a number is not a number",
 );
 
 format_family!(
@@ -29,23 +35,36 @@ format_family!(
                 location.full_line(),
                 location.range.clone(),
                 ontologies,
-            ).map_err(|errs| BoxedError::new(BasicKind::Error, "Invalid psm_utils line", "This ProForma definition contains cross-links, which are not allowed here", location.base_context().add_highlight((0, location.range.clone()))).add_underlying_errors(errs).to_owned())
+            ).map_err(|mut errs| if errs.len() == 1 {errs.pop().unwrap().to_owned()} else {BoxedError::new(BasicKind::Error, "Invalid psm_utils line", "This ProForma definition is invalid, see ", location.base_context().add_highlight((0, location.range.clone()))).add_underlying_errors(errs).to_owned()})
                 .and_then(|(psm, _)| psm.into_linear().ok_or_else(|| BoxedError::new(BasicKind::Error, "Invalid psm_utils line", "This ProForma definition contains cross-links, which are not allowed here", location.base_context().add_highlight((0, location.range.clone())).to_owned())));
-        spectrum_id: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
+        spectrum_id: SpectrumId, |location: Location, _| Ok(location.clone().parse::<usize>(NUMBER_ERROR).map_or_else(|_| SpectrumId::Native(location.get_string()), SpectrumId::Number));
         run: String, |location: Location, _| Ok(location.get_string());
         collection: String, |location: Location, _| Ok(location.get_string());
         is_decoy: bool, |location: Location, _| Ok(location.as_str().eq_ignore_ascii_case("true"));
         score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
-        qvalue: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
-        pep: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
+        qvalue: f64, |location: Location, _| location.or_empty().map_or(Ok(0.0), |l| l.parse::<f64>(NUMBER_ERROR));
+        pep: f64, |location: Location, _| location.or_empty().map_or(Ok(0.0), |l| l.parse::<f64>(NUMBER_ERROR));
         mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<mzcore::system::thomson>);
         rt: Time, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Time::new::<mzcore::system::time::s>);
-        ion_mobility: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
-        protein_list: Vec<String>, |location: Location, _| Ok(location.trim_start_matches("['").trim_end_matches("']").array(',').map(|l| l.trim().trim_start_matches("\'").trim_end_matches("\'").get_string()).collect::<Vec<String>>());
+        ion_mobility: Option<f64>, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR);
+        proteins: Vec<FastaIdentifier<String>>, |location: Location, _| location.trim_start_matches("['").trim_end_matches("']").array(',').map(|l| l.trim().trim_start_matches("\'").trim_end_matches("\'").parse(FASTA_ID_ERROR)).collect::<Result<Vec<_>, _>>();
         rank: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
-        source: String, |location: Location, _| Ok(location.get_string());
+        /// The source column containing a tag for the filetype detected by `psm_utils`, if recognised this also gives the PSI-MS term for this software
+        source: (String, Option<mzcv::Term>), |location: Location, _| Ok((location.as_str().to_string(), match location.as_str().to_ascii_lowercase().as_str() {
+            "comet" => Some(mzcv::term!(MS:1002251|Comet)),
+            "fragpipe" => Some(mzcv::term!(MS:1003429|FragPipe)),
+            "msms" => Some(mzcv::term!(MS:1001583|MaxQuant)),
+            "percolator" => Some(mzcv::term!(MS:1001490|Percolator)),
+            "proteome_discoverer" => Some(mzcv::term!(MS:1000650|Proteome Discoverer)),
+            "proteoscape" => Some(mzcv::term!(MS:1004009|ProteoScape)),
+            "sage" => Some(mzcv::term!(MS:1004007|Sage)),
+            "x!tandem" => Some(mzcv::term!(MS:1001476|X!Tandem)),
+            _ => None, // MSAmanda, DiaNN, AlphaDIA, & ionbot miss a term in PSI-MS
+        }));
     }
-    optional { }
+    optional {
+        rawfile: PathBuf, |location: Location, _| Ok(PathBuf::from(location.get_string()));
+    }
 );
 
 /// Version 1.5 of `psm_utils`
@@ -62,9 +81,10 @@ pub const PSM_UTILS_V1_5: PsmUtilsFormat = PsmUtilsFormat {
     mz: "precursor_mz",
     rt: "retention_time",
     ion_mobility: "ion_mobility",
-    protein_list: "protein_list",
+    proteins: "protein_list",
     rank: "rank",
     source: "source",
+    rawfile: OptionalColumn::Pattern("provenance:", "_filename"),
 };
 
 /// All possible pUniFind versions
@@ -98,7 +118,7 @@ impl PSMFileFormatVersion<PsmUtilsFormat> for PsmUtilsVersion {
 }
 
 impl PSMMetaData for PsmUtilsPSM {
-    type Protein = crate::NoProtein;
+    type Protein = FastaIdentifier<String>;
     #[cfg(feature = "mzannotate")]
     type SpectrumOutputMode = mzcore::chemistry::OutputMolecularFormula;
 
@@ -111,7 +131,11 @@ impl PSMMetaData for PsmUtilsPSM {
     }
 
     fn numerical_id(&self) -> Option<usize> {
-        Some(self.spectrum_id)
+        if let SpectrumId::Number(n) = self.spectrum_id {
+            Some(n)
+        } else {
+            None
+        }
     }
 
     fn id(&self) -> String {
@@ -119,7 +143,7 @@ impl PSMMetaData for PsmUtilsPSM {
     }
 
     fn search_engine(&self) -> Option<mzcv::Term> {
-        None // TODO: maybe detect based on the source column
+        self.source.1.clone()
     }
 
     fn confidence(&self) -> Option<f64> {
@@ -163,7 +187,10 @@ impl PSMMetaData for PsmUtilsPSM {
     }
 
     fn scans(&self) -> SpectrumIds {
-        SpectrumIds::FileNotKnown(vec![SpectrumId::Number(self.spectrum_id)])
+        self.rawfile.clone().map_or_else(
+            || SpectrumIds::FileNotKnown(vec![self.spectrum_id.clone()]),
+            |rawfile| SpectrumIds::FileKnown(vec![(rawfile, vec![self.spectrum_id.clone()])]),
+        )
     }
 
     fn experimental_mz(&self) -> Option<MassOverCharge> {
@@ -172,6 +199,10 @@ impl PSMMetaData for PsmUtilsPSM {
 
     fn experimental_mass(&self) -> Option<Mass> {
         None
+    }
+
+    fn proteins(&self) -> Cow<'_, [Self::Protein]> {
+        Cow::Borrowed(&self.proteins)
     }
 
     fn protein_location(&self) -> Option<Range<u16>> {
