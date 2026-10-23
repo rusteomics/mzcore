@@ -144,7 +144,7 @@ impl MzTabPSM {
                 ontologies,
                 Context::default().source(path.to_string_lossy()).to_owned(),
             )
-            .map(|(m, p, i)| {
+            .map(|(m, p, _comments, i)| {
                 let i: Box<dyn Iterator<Item = Result<Self, BoxedError<'static, BasicKind>>> + '_> =
                     Box::new(i);
                 (m, p, i)
@@ -155,7 +155,7 @@ impl MzTabPSM {
                 ontologies,
                 Context::default().source(path.to_string_lossy()).to_owned(),
             )
-            .map(|(m, p, i)| {
+            .map(|(m, p, _comments, i)| {
                 let i: Box<dyn Iterator<Item = Result<Self, BoxedError<'static, BasicKind>>> + '_> =
                     Box::new(i);
                 (m, p, i)
@@ -164,8 +164,8 @@ impl MzTabPSM {
     }
 
     /// Parse a mzTab file directly from a buffered reader (needed for the `.lines()` function).
-    /// Returns the metadata, all proteins, and an iterator over the PSMs. The file is consumed
-    /// until the first PSM line is detected and is consumed lazily after that.
+    /// Returns the metadata, all proteins, all comments, and an iterator over the PSMs. The file is
+    /// consumed until the first PSM line is detected and is consumed lazily after that.
     /// # Errors
     /// If the reader errors, or if this file contains invalid data.
     pub fn parse_reader<'a, T: BufRead + 'a>(
@@ -176,6 +176,7 @@ impl MzTabPSM {
         (
             Arc<MzTabMetadata>,
             Arc<HashMap<String, Arc<MzTabProtein>>>,
+            Vec<String>,
             impl Iterator<Item = Result<Self, BoxedError<'static, BasicKind>>> + 'a,
         ),
         BoxedError<'static, BasicKind>,
@@ -185,6 +186,7 @@ impl MzTabPSM {
         let mut proteins: HashMap<String, Arc<MzTabProtein>> = HashMap::new();
         let mut metadata = Arc::new(MzTabMetadata::default());
         let mut line_iter = parse_mztab_reader(reader).peekable();
+        let mut comments = Vec::new();
 
         while let Some(Ok(item)) = line_iter.peek()
             && item.as_ref().is_none_or(|i| !matches!(i, MzTabLine::PSM(..)))
@@ -294,6 +296,9 @@ impl MzTabPSM {
                         }
                         peptide_header = Some(header);
                     }
+                    MzTabLine::COM(_line_index, line, _fields) => {
+                        comments.push(line[3..].trim().to_string());
+                    }
                     MzTabLine::PSM(..) => unreachable!(),
                 }
             }
@@ -303,9 +308,10 @@ impl MzTabPSM {
         Ok((
             metadata.clone(),
             proteins.clone(),
+            comments,
             line_iter.filter_map(move |item| {
-                item.transpose().map(|item| match item {
-                    Ok(MzTabLine::PSM(line_index, line, fields)) => PSMLine::new(
+                item.transpose().and_then(|item| match item {
+                    Ok(MzTabLine::PSM(line_index, line, fields)) => Some(PSMLine::new(
                         base.clone().lines(0, line.clone()).line_index(line_index).to_owned(),
                         peptide_header.as_deref(),
                         &line,
@@ -313,19 +319,20 @@ impl MzTabPSM {
                     )
                     .and_then(|line| {
                         Self::from_line(&line, ontologies, &proteins, &metadata).map_err(BoxedError::to_owned)
-                    }),
+                    })),
+                    Ok(MzTabLine::COM(_, _, _)) => None,
                     Ok(
                         MzTabLine::MTD(line_index, ..)
                         | MzTabLine::PRH(line_index, ..)
                         | MzTabLine::PRT(line_index, ..)
                         | MzTabLine::PSH(line_index, ..),
-                    ) => Err(BoxedError::new(
+                    ) => Some(Err(BoxedError::new(
                         BasicKind::Warning,
                         "Invalid line type",
                         "After the first PSM line no MTD, PRH, PRT, or PSH lines are allowed anymore",
                         base.clone().line_index(line_index).to_owned(),
-                    )),
-                    Err(e) => Err(e),
+                    ))),
+                    Err(e) => Some(Err(e)),
                 })
             }),
         ))
@@ -2291,6 +2298,8 @@ enum MzTabLine {
     PSH(u32, String, Vec<Range<usize>>),
     /// Peptide line, stored as hash map with the columns names from PSH
     PSM(u32, String, Vec<Range<usize>>),
+    /// A comment
+    COM(u32, String, Vec<Range<usize>>),
 }
 
 /// Parse a mzTab file
@@ -2320,6 +2329,7 @@ fn parse_mztab_reader<T: BufRead>(
                         "PRT" => Some(MzTabLine::PRT(line_index, line, fields)),
                         "PSH" => Some(MzTabLine::PSH(line_index, line, fields)),
                         "PSM" => Some(MzTabLine::PSM(line_index, line, fields)),
+                        "COM" => Some(MzTabLine::COM(line_index, line, fields)),
                         _ => None,
                     },
                 )

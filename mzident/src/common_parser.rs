@@ -256,7 +256,8 @@ pub(super) enum OptionalColumn {
     /// This column is required in this version (but as it is an `OptionalColumn` not in some other
     /// version)
     Required(&'static str),
-    /// Find the first column that has these exact start and end sequences
+    /// This column is optional in this version, but the name is dynamic so find the first column
+    /// that has these exact (including capitalisation) start and end sequences.
     Pattern(&'static str, &'static str),
 }
 

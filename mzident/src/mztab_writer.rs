@@ -900,6 +900,22 @@ pub type MzTabOptionalColumn<'a, P, W> = (
     Box<dyn Fn(&P, &mut W) -> Result<(), std::io::Error> + 'a>,
 );
 
+impl<W: Write, State> MzTabWriter<W, State> {
+    /// Write comments to the file. This automatically converts newlines in the comments to '␤'
+    /// (symbol for newline U+2424).
+    pub fn write_comments(
+        mut self,
+        comments: impl IntoIterator<Item = impl ToString>,
+    ) -> Result<MzTabWriter<W, State>, std::io::Error> {
+        for comment in comments {
+            self.writer.write_all(b"COM\t")?;
+            self.writer.write_all(comment.to_string().replace('\n', "␤").as_bytes())?;
+            writeln!(self.writer)?;
+        }
+        Ok(self)
+    }
+}
+
 impl<W: Write, State: CanWriteProteins> MzTabWriter<W, State> {
     /// Write the proteins. This can only be done if the header is already written or if some
     /// proteins where written just before. If proteins where already written before and the custom
