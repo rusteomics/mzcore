@@ -7,7 +7,7 @@ macro_rules! test {
                 &mzcore::ontology::STATIC_ONTOLOGIES,
                 context_error::Context::default(),
             ) {
-                for p in res.2 {
+                for p in res.3 {
                     if p.is_err() {
                         return;
                     }
