@@ -153,12 +153,12 @@ impl<W: Write> MzTabWriter<W, Initial> {
         header.psm_search_engines_scores.extend(
             psms.iter()
                 .flat_map(|p| {
-                    p.original_confidence().map(|(_, t)| t.clone().into()).into_iter().chain(
+                    p.original_confidence().map(|(_, t)| t.into()).into_iter().chain(
                         p.other_scores().into_iter().flat_map(|s| {
-                            s.into_iter()
+                            s.iter()
                                 .map(|(_, t)| t)
                                 .cloned()
-                                .map(|t| t.into())
+                                .map(Into::into)
                                 .collect::<Vec<CVTerm>>()
                         }),
                     )
@@ -906,7 +906,7 @@ impl<W: Write, State> MzTabWriter<W, State> {
     pub fn write_comments(
         mut self,
         comments: impl IntoIterator<Item = impl ToString>,
-    ) -> Result<MzTabWriter<W, State>, std::io::Error> {
+    ) -> Result<Self, std::io::Error> {
         for comment in comments {
             self.writer.write_all(b"COM\t")?;
             self.writer.write_all(comment.to_string().replace('\n', "␤").as_bytes())?;
@@ -966,7 +966,7 @@ impl<W: Write, State: CanWriteProteins> MzTabWriter<W, State> {
                 protein
                     .database()
                     .and_then(|d| d.1)
-                    .map_or(Cow::Borrowed("null"), |t| t),
+                    .unwrap_or(Cow::Borrowed("null")),
                 protein.search_engine().iter().map(|(term, _)| term).join("|"),
                 protein.ambiguity_members().join(","),
                 protein
@@ -1182,11 +1182,12 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
         custom_columns: &[MzTabOptionalColumn<PSM, W>],
     ) -> Result<MzTabWriter<W, PSMsWritten>, MzTabWriteError> {
         let psh = format!(
-            "PSH\tsequence\tPSM_ID\taccession\tunique\tdatabase\tdatabase_version\tsearch_engine\t{}\tmodifications\tspectra_ref\tretention_time\tcharge\texp_mass_to_charge\tcalc_mass_to_charge\tpre\tpost\tstart\tend\treliability\turi\topt_global_{}{}",
+            "PSH\tsequence\tPSM_ID\taccession\tunique\tdatabase\tdatabase_version\tsearch_engine\t{}\tmodifications\tspectra_ref\tretention_time\tcharge\texp_mass_to_charge\tcalc_mass_to_charge\tpre\tpost\tstart\tend\treliability\turi\topt_global_{}\topt_global_{}{}",
             (1..=self.metadata.psm_search_engines_scores.len())
                 .map(|i| format!("search_engine_score[{i}]"))
                 .join("\t"),
             MzTabOptionalColumnName::Term(mzcv::term!(MS:1003984|amino acid confidence level)),
+            MzTabOptionalColumnName::Term(mzcv::term!(MS:1002217|decoy_peptide)),
             custom_columns
                 .iter()
                 .map(|(term, id, _)| format!("\topt_{id}_{term}"))
@@ -1273,11 +1274,11 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
 
                     write!(
                         self.writer,
-                        "PSM\t{sequence}\t{psm_id}\t{accession}\t{unique}\t{database}\t{database_version}\t{search_engine}\t{search_engine_score}\t{modifications}\t{spectra_ref}\t{retention_time}\t{charge}\t{exp_mass_to_charge}\t{calc_mass_to_charge}\t{pre}\t{post}\t{start}\t{end}\t{reliability}\t{uri}\t{lc}",
+                        "PSM\t{sequence}\t{psm_id}\t{accession}\t{unique}\t{database}\t{database_version}\t{search_engine}\t{search_engine_score}\t{modifications}\t{spectra_ref}\t{retention_time}\t{charge}\t{exp_mass_to_charge}\t{calc_mass_to_charge}\t{pre}\t{post}\t{start}\t{end}\t{reliability}\t{uri}\t{lc}\t{is_decoy}",
                         sequence = peptidoform
                             .sequence()
                             .iter()
-                            .filter_map(|s| s.aminoacid.one_letter_code())
+                            .map(|s| s.aminoacid.one_letter_code().unwrap_or('X'))
                             .collect::<String>(),
                         psm_id = if first_peptidoform {
                             psm.numerical_id().map_or_else(
@@ -1295,7 +1296,7 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
                             .proteins()
                             .first()
                             .map_or(Cow::Borrowed("null"), |p| p.id().accession().clone()), /* TODO: contains an I assume unnecessary .clone */
-                        unique = psm.unique().map_or_else(|| "null".to_string(), |d| d.to_string()),
+                        unique = psm.unique().map_or_else(|| "null", |d| if d { "1" } else { "0" }),
                         database = psm.database().map_or("null", |d| d.0),
                         database_version = psm.database().and_then(|d| d.1).unwrap_or("null"),
                         search_engine = psm.search_engine().map_or_else(
@@ -1473,7 +1474,9 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
                         lc = psm.local_confidence().map_or_else(
                             || "null".to_string(),
                             |lc| lc.iter().map(ToString::to_string).join(",")
-                        )
+                        ),
+                        is_decoy =
+                            psm.is_decoy().map_or_else(|| "null", |d| if d { "1" } else { "0" }),
                     )?;
                     for (_, _, col) in custom_columns {
                         write!(self.writer, "\t")?;

@@ -196,6 +196,10 @@ impl<Mode: MassOutputMode> PSMMetaData for AnnotatedSpectrum<Mode> {
         None
     }
 
+    fn is_decoy(&self) -> Option<bool> {
+        None
+    }
+
     fn reliability(&self) -> Option<crate::Reliability> {
         None
     }

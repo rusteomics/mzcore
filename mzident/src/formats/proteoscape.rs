@@ -218,6 +218,10 @@ impl PSMMetaData for ProteoscapePSM {
         Some(self.is_unique)
     }
 
+    fn is_decoy(&self) -> Option<bool> {
+        None
+    }
+
     fn reliability(&self) -> Option<crate::Reliability> {
         None
     }

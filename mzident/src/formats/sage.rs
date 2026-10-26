@@ -250,6 +250,10 @@ impl PSMMetaData for SagePSM {
         None
     }
 
+    fn is_decoy(&self) -> Option<bool> {
+        Some(self.decoy)
+    }
+
     fn reliability(&self) -> Option<crate::Reliability> {
         None
     }

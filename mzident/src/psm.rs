@@ -599,6 +599,7 @@ impl_metadata!(
         fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence);
         fn database(&self) -> Option<(&str, Option<&str>)>;
         fn unique(&self) -> Option<bool>;
+        fn is_decoy(&self) -> Option<bool>;
         fn reliability(&self) -> Option<Reliability>;
         fn uri(&self) -> Option<String>;
     }
@@ -629,6 +630,7 @@ impl_metadata!(
         fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence);
         fn database(&self) -> Option<(&str, Option<&str>)>;
         fn unique(&self) -> Option<bool>;
+        fn is_decoy(&self) -> Option<bool>;
         fn reliability(&self) -> Option<Reliability>;
         fn uri(&self) -> Option<String>;
         fn annotated_spectrum(&self) -> Option<Cow<'_, AnnotatedSpectrum<OutputMolecularFormula>>>;

@@ -702,6 +702,10 @@ impl PSMMetaData for PLinkPSM {
         None
     }
 
+    fn is_decoy(&self) -> Option<bool> {
+        Some(self.is_decoy)
+    }
+
     fn reliability(&self) -> Option<crate::Reliability> {
         None
     }

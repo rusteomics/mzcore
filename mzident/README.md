@@ -42,7 +42,8 @@ And output from the following programs:
 
 - Handle comments reading and writing in mzTab
 - Add support for the `psm_utils` format
-- Added support for returning multiple scores per PSM (see `PSMMetaData::other_scores`)
+- Added support for returning multiple scores per PSM, with `PSMMetaData::other_scores`
+- Added `PSMMetaData::is_decoy`
 
 ### 0.2.1
 

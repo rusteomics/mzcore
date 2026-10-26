@@ -627,6 +627,10 @@ impl PSMMetaData for MSFraggerPSM {
         self.is_unique
     }
 
+    fn is_decoy(&self) -> Option<bool> {
+        None
+    }
+
     fn reliability(&self) -> Option<Reliability> {
         None
     }

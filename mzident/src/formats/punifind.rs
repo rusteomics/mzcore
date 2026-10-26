@@ -232,6 +232,10 @@ impl PSMMetaData for PUniFindPSM {
         None
     }
 
+    fn is_decoy(&self) -> Option<bool> {
+        None
+    }
+
     fn reliability(&self) -> Option<crate::Reliability> {
         None
     }

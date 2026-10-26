@@ -360,6 +360,10 @@ impl PSMMetaData for PLGSPSM {
         None
     }
 
+    fn is_decoy(&self) -> Option<bool> {
+        None
+    }
+
     fn reliability(&self) -> Option<Reliability> {
         Some(self.peptide_auto_curate)
     }

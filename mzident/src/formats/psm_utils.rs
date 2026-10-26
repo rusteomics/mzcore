@@ -197,10 +197,6 @@ impl PSMMetaData for PsmUtilsPSM {
         Some(self.mz)
     }
 
-    fn experimental_mass(&self) -> Option<Mass> {
-        None
-    }
-
     fn proteins(&self) -> Cow<'_, [Self::Protein]> {
         Cow::Borrowed(&self.proteins)
     }
@@ -219,6 +215,10 @@ impl PSMMetaData for PsmUtilsPSM {
 
     fn unique(&self) -> Option<bool> {
         None
+    }
+
+    fn is_decoy(&self) -> Option<bool> {
+        Some(self.is_decoy)
     }
 
     fn reliability(&self) -> Option<crate::Reliability> {

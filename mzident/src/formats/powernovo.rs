@@ -188,6 +188,10 @@ impl PSMMetaData for PowerNovoPSM {
         None
     }
 
+    fn is_decoy(&self) -> Option<bool> {
+        None
+    }
+
     fn reliability(&self) -> Option<crate::Reliability> {
         None
     }

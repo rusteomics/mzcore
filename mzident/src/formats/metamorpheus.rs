@@ -367,6 +367,10 @@ impl PSMMetaData for MetaMorpheusPSM {
         None
     }
 
+    fn is_decoy(&self) -> Option<bool> {
+        Some(self.accession.decoy)
+    }
+
     fn reliability(&self) -> Option<Reliability> {
         None
     }

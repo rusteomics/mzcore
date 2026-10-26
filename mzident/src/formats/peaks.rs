@@ -821,6 +821,10 @@ impl PSMMetaData for PeaksPSM {
         self.unique
     }
 
+    fn is_decoy(&self) -> Option<bool> {
+        None
+    }
+
     fn reliability(&self) -> Option<crate::Reliability> {
         None
     }

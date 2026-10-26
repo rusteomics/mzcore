@@ -39,8 +39,8 @@ pub trait PSMMetaData {
     /// Get the original confidence and the term identifying the type of original confidence
     fn original_confidence(&self) -> Option<(f64, Term)>;
 
-    /// Get all other scores (excluding the original_confidence) with their term to describe the
-    /// type
+    /// Get all other scores (excluding the `original_confidence`) with their term to describe the
+    /// type. To comply with mzTab the scores should be ordered by most important first.
     fn other_scores(&self) -> Option<Cow<'_, [(f64, Term)]>> {
         None
     }
@@ -73,8 +73,12 @@ pub trait PSMMetaData {
     /// Get the mz as experimentally determined
     fn experimental_mz(&self) -> Option<MassOverCharge>;
 
-    /// Get the mass as experimentally determined
-    fn experimental_mass(&self) -> Option<Mass>;
+    /// Get the mass as experimentally determined, if not overwritten determines this based on
+    /// [`Self::experimental_mz`] and [`Self::charge`].
+    fn experimental_mass(&self) -> Option<Mass> {
+        self.experimental_mz()
+            .and_then(|mz| self.charge().map(|c| c.to_float() * mz))
+    }
 
     /// Get the absolute ppm error between the experimental and theoretical precursor mass, if there
     /// are multiple masses possible returns the smallest ppm
@@ -121,6 +125,9 @@ pub trait PSMMetaData {
     /// Get if this PSM is marked as a unique match for its database match, note that this might not
     /// be true anymore if multiple streams of data are merged
     fn unique(&self) -> Option<bool>;
+
+    /// Get if this PSM is marked as a decoy PSM
+    fn is_decoy(&self) -> Option<bool>;
 
     /// Get the reliability of this PSM
     fn reliability(&self) -> Option<Reliability>;
@@ -247,6 +254,10 @@ macro_rules! impl_ref {
 
             fn unique(&self) -> Option<bool> {
                 (**self).unique()
+            }
+
+            fn is_decoy(&self) -> Option<bool> {
+                (**self).is_decoy()
             }
 
             fn reliability(&self) -> Option<Reliability> {

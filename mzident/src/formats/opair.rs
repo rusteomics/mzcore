@@ -377,6 +377,10 @@ impl PSMMetaData for OpairPSM {
         None
     }
 
+    fn is_decoy(&self) -> Option<bool> {
+        Some(self.accession.kind == MetaMorpheusMatchKind::Decoy)
+    }
+
     fn reliability(&self) -> Option<Reliability> {
         None
     }

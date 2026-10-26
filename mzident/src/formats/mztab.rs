@@ -42,6 +42,8 @@ use crate::{
     },
 };
 
+// TODO: handle is_decoy using: opt_cv_MS:1002217_decoy_peptide
+
 /// Peptidoform data from a mzTab file
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 pub struct MzTabPSM {
@@ -57,6 +59,8 @@ pub struct MzTabPSM {
     /// Indicates whether the peptide sequence (coming from the PSM) is unique for
     /// this protein in respect to the searched database.
     pub unique: Option<bool>,
+    /// Indicates whether the peptide sequence (coming from the PSM) is a decoy sequence or not.
+    pub is_decoy: Option<bool>,
     /// The protein database used for the search together with the version of the
     /// database.
     pub database: Option<(String, Option<String>)>,
@@ -469,6 +473,9 @@ impl MzTabPSM {
                  * protein */
             unique: line
                 .optional_column("unique")
+                .and_then(|(v, _)| (!v.eq_ignore_ascii_case("null")).then(|| v == "1")),
+            is_decoy: line
+                .optional_column("opt_global_MS_1002217_decoy_peptide")
                 .and_then(|(v, _)| (!v.eq_ignore_ascii_case("null")).then(|| v == "1")),
             database: line
                 .optional_column("database")
@@ -2445,6 +2452,10 @@ impl PSMMetaData for MzTabPSM {
 
     fn unique(&self) -> Option<bool> {
         self.unique
+    }
+
+    fn is_decoy(&self) -> Option<bool> {
+        None
     }
 
     fn reliability(&self) -> Option<Reliability> {

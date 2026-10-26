@@ -161,6 +161,10 @@ impl PSMMetaData for BasicCSVPSM {
         None
     }
 
+    fn is_decoy(&self) -> Option<bool> {
+        None
+    }
+
     fn reliability(&self) -> Option<crate::Reliability> {
         None
     }
