@@ -145,8 +145,10 @@ impl MonoSaccharide {
         let mut configuration = None;
         let mut epi = false;
 
-        // ignore stuff
+        // Ignore stuff
         index += line[index..].ignore(&["keto-"]);
+
+        // Handle isomeric state
         if line[index..].starts_with("d-") {
             configuration = Some(Configuration::D);
             index += 2;
@@ -157,6 +159,7 @@ impl MonoSaccharide {
             configuration = None;
             index += 2;
         }
+
         // Prefix mods
         let mut amount = 1;
         if bytes[index].is_ascii_digit() {
@@ -197,11 +200,13 @@ impl MonoSaccharide {
             }
             index += line[index..].ignore(&["-"]);
         }
+
         // Detect epi state
         if line[index..].starts_with('e') {
             epi = true;
             index += 1;
         }
+
         // Get the prefix mods
         if !line[index..].starts_with("dig") && !line[index..].starts_with("dha") {
             if let Some(o) = line[index..].take_any(PREFIX_SUBSTITUENTS, |e| {
@@ -211,6 +216,7 @@ impl MonoSaccharide {
             }
             index += line[index..].ignore(&["-"]);
         }
+
         // Another optional isomeric state
         if line[index..].starts_with("d-") {
             configuration = Some(Configuration::D);
@@ -222,6 +228,7 @@ impl MonoSaccharide {
             configuration = None;
             index += 2;
         }
+
         // Base sugar
         let mut sugar = None;
         for sug in BASE_SUGARS {
@@ -258,57 +265,50 @@ impl MonoSaccharide {
                         .add_highlight((0, index, 3)),
                 )
             })?;
+
         // Furanose
         if index < bytes.len() && bytes[index] == b'f' {
             index += 1;
             sugar.furanose = true;
         }
+
         // Postfix mods
         while index < bytes.len() {
             index += line[index..].ignore(&["-"]);
-            let mut single_amount = 0;
-            let mut double_amount = 0;
+
             // Location
-            let (offset, mut locations) = parse_locations(
+            let (new_index, mut locations) = parse_locations(
                 &line,
                 index,
                 &Context::default().lines(0, original_line).line_index(line_index),
             )?;
-            index = offset;
+            index = new_index;
             if bytes.get(index).is_some_and(|b| *b == b':') {
                 // additional place
-                let (offset, locs) = parse_locations(
+                let (new_index, locs) = parse_locations(
                     &line,
                     index + 1,
                     &Context::default().lines(0, original_line).line_index(line_index),
                 )?;
                 locations.extend_from_slice(&locs);
-                index = offset;
+                index = new_index;
             }
+
+            // Handle mods with no location, e.g. GlcNAc
             if locations.is_empty() {
                 locations.push(ModLocation::Single(None));
             }
-            let double = locations.iter().any(|l| matches!(l, ModLocation::Double(_, _)));
-            if double {
-                double_amount += locations.len();
-            } else {
-                single_amount += locations.len();
-            }
 
+            // Ignore isomeric state
             index += line[index..].ignore(&["-"]);
             index += line[index..].ignore(&["(x)", "(r)", "(s)"]);
-            if double {
+
+            // If there is a double location use the double mods lookup, otherwise use single mods
+            if locations.iter().any(|l| matches!(l, ModLocation::Double(_, _))) {
                 if let Some(o) = line[index..].take_any(DOUBLE_LINKED_POSTFIX_SUBSTITUENTS, |e| {
                     sugar.substituents.extend(
-                        e.iter().flat_map(|s| std::iter::repeat_n((*s, None), double_amount)),
+                        e.iter().flat_map(|s| std::iter::repeat_n((*s, None), locations.len())),
                     );
-                    if single_amount > 0 {
-                        sugar.substituents.extend(
-                            e.iter()
-                                .filter(|s| **s != GlycanSubstituent::Water)
-                                .flat_map(|s| std::iter::repeat_n((*s, None), single_amount)),
-                        );
-                    }
                 }) {
                     index += o;
                 } else {
@@ -346,13 +346,18 @@ impl MonoSaccharide {
                     break;
                 }
             }
-            // Amount
-            if amount != 1 {
-                // Ignore the amount number, already determined before
-                index += 1;
+
+            // Ignore the amount number, already determined before
+            // A length of zero cannot happen so this is safe
+            if locations.len() != 1 {
+                index += 1 + locations.len().ilog10() as usize;
+                index = index.min(bytes.len());
             }
         }
-        index += line[index..].ignore(&["?"]); // I guess to indicate partial structures
+
+        if index < bytes.len() {
+            index += line[index..].ignore(&["?"]); // I guess to indicate partial structures
+        }
         sugar.substituents.sort();
         Ok((sugar, index))
     }

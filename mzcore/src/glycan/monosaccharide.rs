@@ -503,7 +503,7 @@ mod tests {
         let parse = |str: &str| {
             MonoSaccharide::from_short_iupac(str, 0, 0)
                 .map(|(res, len)| {
-                    assert_eq!(str.len(), len);
+                    assert_eq!(str.len(), len, "Did not fully consume: '{str}'");
                     res
                 })
                 .unwrap()
@@ -515,6 +515,14 @@ mod tests {
                 (GlycanSubstituent::Acetyl, Some(3)),
                 (GlycanSubstituent::Pyruvyl, None),
                 (GlycanSubstituent::Pyruvyl, None),
+            ])
+        );
+        assert_eq!(
+            parse("Gal2,3Ac2S"),
+            MonoSaccharide::new(BaseSugar::Hexose(Some(HexoseIsomer::Galactose)), &[
+                (GlycanSubstituent::Acetyl, Some(2)),
+                (GlycanSubstituent::Acetyl, Some(3)),
+                (GlycanSubstituent::Sulfate, None),
             ])
         );
         assert_eq!(
