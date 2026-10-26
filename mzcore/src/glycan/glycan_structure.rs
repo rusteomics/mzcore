@@ -607,6 +607,7 @@ mod test {
             "HexNAc(Hex(Hex(HexNAc(Hex)),Hex(HexNAc),HexNAc))"
         );
     }
+
     #[test]
     fn correct_structure_g04605kt() {
         let structure = GlycanStructure::from_short_iupac(

@@ -511,8 +511,9 @@ mod tests {
         assert_eq!(
             parse("Gal2,3Ac24-1,6-1Py"),
             MonoSaccharide::new(BaseSugar::Hexose(Some(HexoseIsomer::Galactose)), &[
-                (GlycanSubstituent::Acetyl, None),
-                (GlycanSubstituent::Acetyl, None),
+                (GlycanSubstituent::Acetyl, Some(2)),
+                (GlycanSubstituent::Acetyl, Some(3)),
+                (GlycanSubstituent::Pyruvyl, None),
                 (GlycanSubstituent::Pyruvyl, None),
             ])
         );
@@ -548,23 +549,24 @@ mod tests {
             parse("GlcN2,6S2"),
             MonoSaccharide::new(BaseSugar::Hexose(Some(HexoseIsomer::Glucose)), &[
                 (GlycanSubstituent::Amino, None),
-                (GlycanSubstituent::Sulfate, None),
-                (GlycanSubstituent::Sulfate, None)
+                (GlycanSubstituent::Sulfate, Some(2)),
+                (GlycanSubstituent::Sulfate, Some(6))
             ])
         );
         assert_eq!(
             parse("Tagf1,6P2"),
             MonoSaccharide::new(BaseSugar::Hexose(Some(HexoseIsomer::Tagatose)), &[
-                (GlycanSubstituent::Phosphate, None),
-                (GlycanSubstituent::Phosphate, None)
+                (GlycanSubstituent::Phosphate, Some(1)),
+                (GlycanSubstituent::Phosphate, Some(6))
             ])
             .furanose()
         );
         assert_eq!(
             parse("Gal2,3Ac24-1,6-1Py"),
             MonoSaccharide::new(BaseSugar::Hexose(Some(HexoseIsomer::Galactose)), &[
-                (GlycanSubstituent::Acetyl, None),
-                (GlycanSubstituent::Acetyl, None),
+                (GlycanSubstituent::Acetyl, Some(2)),
+                (GlycanSubstituent::Acetyl, Some(3)),
+                (GlycanSubstituent::Pyruvyl, None),
                 (GlycanSubstituent::Pyruvyl, None),
             ])
         );
@@ -584,10 +586,10 @@ mod tests {
         assert_eq!(
             parse("Glc2,3,4,6Ac4"),
             MonoSaccharide::new(BaseSugar::Hexose(Some(HexoseIsomer::Glucose)), &[
-                (GlycanSubstituent::Acetyl, None),
-                (GlycanSubstituent::Acetyl, None),
-                (GlycanSubstituent::Acetyl, None),
-                (GlycanSubstituent::Acetyl, None)
+                (GlycanSubstituent::Acetyl, Some(2)),
+                (GlycanSubstituent::Acetyl, Some(3)),
+                (GlycanSubstituent::Acetyl, Some(4)),
+                (GlycanSubstituent::Acetyl, Some(6))
             ])
         );
     }

@@ -275,7 +275,7 @@ impl MonoSaccharide {
                 &Context::default().lines(0, original_line).line_index(line_index),
             )?;
             index = offset;
-            if bytes[index] == b':' {
+            if bytes.get(index).is_some_and(|b| *b == b':') {
                 // additional place
                 let (offset, locs) = parse_locations(
                     &line,
@@ -284,6 +284,9 @@ impl MonoSaccharide {
                 )?;
                 locations.extend_from_slice(&locs);
                 index = offset;
+            }
+            if locations.is_empty() {
+                locations.push(ModLocation::Single(None));
             }
             let double = locations.iter().any(|l| matches!(l, ModLocation::Double(_, _)));
             if double {
@@ -368,7 +371,7 @@ impl MonoSaccharide {
     // }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 enum ModLocation {
     Single(Option<u8>),
     Double(Option<u8>, Option<u8>),
@@ -425,7 +428,7 @@ fn parse_locations<'a>(
     while possibly_unknown_number(bytes[index]) {
         let mut num: u8 = 0;
         let start = index;
-        while bytes[index].is_ascii_digit() {
+        while index < bytes.len() && bytes[index].is_ascii_digit() {
             let Some(n) = num.checked_mul(10).and_then(|n| n.checked_add(bytes[index] - b'0'))
             else {
                 return Err(BoxedError::new(
@@ -438,13 +441,16 @@ fn parse_locations<'a>(
             num = n;
             index += 1;
         }
-        let l = if bytes[index] == b'?' {
+        let l = if bytes.get(index).is_some_and(|b| *b == b'?') {
             index += 1;
             None
         } else {
             Some(num)
         };
-        if bytes[index] == b'-' && possibly_unknown_number(bytes[index + 1]) {
+        if index < bytes.len()
+            && bytes.get(index).is_some_and(|b| *b == b'-')
+            && possibly_unknown_number(bytes[index + 1])
+        {
             let l2 = if bytes[index + 1] == b'?' {
                 None
             } else {
@@ -455,10 +461,12 @@ fn parse_locations<'a>(
         } else {
             locations.push(ModLocation::Single(l));
         }
-        if separator.is_none() && bytes[index] == b',' || bytes[index] == b'/' {
-            separator = Some(bytes[index])
+        if index < bytes.len()
+            && (separator.is_none() && bytes[index] == b',' || bytes[index] == b'/')
+        {
+            separator = Some(bytes[index]);
         }
-        if separator.is_some_and(|s| s == bytes[index]) {
+        if index < bytes.len() && separator.is_some_and(|s| s == bytes[index]) {
             index += 1;
         } else {
             break;
