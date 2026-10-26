@@ -321,6 +321,16 @@ impl PSMMetaData for OpairPSM {
         None
     }
 
+    fn other_scores(&self) -> Option<Cow<'_, [(f64, mzcv::Term)]>> {
+        Some(
+            vec![
+                (self.q_value, mzcv::term!(MS:1002354|PSM-level q-value)),
+                (self.pep, mzcv::term!(MS:1001493|percolator:PEP)),
+            ]
+            .into(),
+        )
+    }
+
     fn charge(&self) -> Option<Charge> {
         Some(self.z)
     }

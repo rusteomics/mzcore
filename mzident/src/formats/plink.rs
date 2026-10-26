@@ -607,6 +607,13 @@ impl PSMMetaData for PLinkPSM {
         None
     }
 
+    fn other_scores(&self) -> Option<Cow<'_, [(f64, mzcv::Term)]>> {
+        Some(Cow::Owned(vec![
+            (self.e_value, mzcv::term!(MS:1002353|PSM-level e-value)),
+            (self.q_value, mzcv::term!(MS:1002354|PSM-level q-value)),
+        ]))
+    }
+
     fn charge(&self) -> Option<Charge> {
         Some(self.z)
     }

@@ -165,7 +165,7 @@ impl PSMMetaData for PsmUtilsPSM {
     fn other_scores(&self) -> Option<Cow<'_, [(f64, mzcv::Term)]>> {
         Some(
             vec![
-                (self.qvalue, mzcv::term!(MS:1001491|percolator:Q value)),
+                (self.qvalue, mzcv::term!(MS:1002354|PSM-level q-value)),
                 (self.pep, mzcv::term!(MS:1001493|percolator:PEP)),
             ]
             .into(),

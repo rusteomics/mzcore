@@ -26,6 +26,7 @@ And output from the following programs:
 - PointNovo
 - PowerNovo
 - Proteoscape
+- psm_utils
 - pUniFind
 - Sage
 - π-HelixNovo
@@ -36,6 +37,13 @@ And output from the following programs:
 * `mzannotate` - Adds mzannotate as a dependency and allow mzSpecLib spectra to be used as PSM and allow other formats to parse annotated spectra
 
 ## Changelog
+
+### Upcoming
+
+- Handle comments reading and writing in mzTab
+- Add support for the `psm_utils` format
+- Added support for returning multiple scores per PSM (see `PSMMetaData::other_scores`)
+
 ### 0.2.1
 
 - Fix mzident being able to be built without feature mzannotate
@@ -45,5 +53,5 @@ And output from the following programs:
 - Better InstaNovo parsing and version detection thanks to @BioGeek
 - Full mzTab metadata support in reading and writing
 - Renamed identified peptidoform to PSM to align better with general terms
-- Better protein handling with the trait ProteinMetaData
+- Better protein handling with the trait `ProteinMetaData`
 - All software now have a PSI-MS term

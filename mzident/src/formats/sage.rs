@@ -193,6 +193,17 @@ impl PSMMetaData for SagePSM {
         None
     }
 
+    fn other_scores(&self) -> Option<Cow<'_, [(f64, mzcv::Term)]>> {
+        // TODO: there are more scores in there but they do not have good terms in PSI-MS
+        Some(Cow::Owned(vec![
+            (
+                self.matched_intensity_pct.get::<mzcore::system::ratio::fraction>(),
+                mzcv::term!(MS:1003166|assigned intensity fraction),
+            ),
+            (self.posterior_error, mzcv::term!(MS:1001493|percolator:PEP)),
+        ]))
+    }
+
     fn charge(&self) -> Option<Charge> {
         Some(self.z)
     }

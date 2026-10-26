@@ -177,6 +177,13 @@ impl PSMMetaData for PUniFindPSM {
         None
     }
 
+    fn other_scores(&self) -> Option<Cow<'_, [(f64, mzcv::Term)]>> {
+        Some(Cow::Owned(vec![(
+            self.cos_similarity,
+            mzcv::term!(MS:1003304|spectral dot product),
+        )]))
+    }
+
     fn charge(&self) -> Option<Charge> {
         None
     }

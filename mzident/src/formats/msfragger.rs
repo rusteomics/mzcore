@@ -567,6 +567,16 @@ impl PSMMetaData for MSFraggerPSM {
         None
     }
 
+    fn other_scores(&self) -> Option<Cow<'_, [(f64, mzcv::Term)]>> {
+        Some(
+            vec![(
+                f64::from(self.expectation_score),
+                mzcv::term!(MS:1002353|PSM-level e-value),
+            )]
+            .into(),
+        )
+    }
+
     fn charge(&self) -> Option<Charge> {
         Some(self.z)
     }
