@@ -15,7 +15,7 @@ use crate::{
 
 /// An alignment index to store a collection of sequences to do alignment against with one or more
 /// other sequences. This improves performance because it can cache some intermediate results.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct AlignIndex<const STEPS: u16, Source> {
     pub(super) sequences: Vec<(Source, DiagonalArray<Multi<Mass>, STEPS>)>,
     pub(super) mode: MassMode,
@@ -52,6 +52,18 @@ impl<const STEPS: u16, Source: HasPeptidoform<Linear> + Clone> AlignIndex<STEPS,
             .collect::<Vec<_>>();
 
         Self { sequences, mode }
+    }
+
+    /// Add a new sequence to the index
+    pub fn add_sequence(&mut self, sequence: Source) {
+        let masses = calculate_masses(sequence.cast_peptidoform(), self.mode);
+        self.sequences.push((sequence, masses));
+    }
+
+    /// Retains only the elements specified by the predicate. Works using the same logic as
+    /// [`Vec::retain`]
+    pub fn retain(&mut self, f: impl Fn(&Source) -> bool) {
+        self.sequences.retain(|(s, _)| f(s))
     }
 
     /// Align a single peptidoform to the index
@@ -132,6 +144,16 @@ impl<const STEPS: u16, Source: HasPeptidoform<Linear> + Clone> AlignIndex<STEPS,
     }
 }
 
+impl<const STEPS: u16, Source: HasPeptidoform<Linear> + Clone + Sync + Send> Extend<Source>
+    for AlignIndex<STEPS, Source>
+{
+    fn extend<T: IntoIterator<Item = Source>>(&mut self, iter: T) {
+        for v in iter {
+            self.add_sequence(v);
+        }
+    }
+}
+
 impl<const STEPS: u16, Source: HasPeptidoform<Linear> + Clone + Sync + Send>
     AlignIndex<STEPS, Source>
 {
@@ -181,6 +203,20 @@ impl<const STEPS: u16, Source: HasPeptidoform<Linear> + Clone + Sync + Send>
                 )
             },
         )
+    }
+
+    /// Create a new index for alignments in parallel
+    #[cfg(feature = "rayon")]
+    pub fn par_new(sequences: impl IntoParallelIterator<Item = Source>, mode: MassMode) -> Self {
+        let sequences = sequences
+            .into_par_iter()
+            .map(|p| {
+                let masses = calculate_masses::<STEPS>(p.cast_peptidoform(), mode);
+                (p, masses)
+            })
+            .collect::<Vec<_>>();
+
+        Self { sequences, mode }
     }
 }
 
