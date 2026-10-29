@@ -41,14 +41,14 @@ format_family!(
         run: String, |location: Location, _| Ok(location.get_string());
         collection: String, |location: Location, _| Ok(location.get_string());
         is_decoy: bool, |location: Location, _| Ok(location.as_str().eq_ignore_ascii_case("true"));
-        score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
-        qvalue: f64, |location: Location, _| location.or_empty().map_or(Ok(0.0), |l| l.parse::<f64>(NUMBER_ERROR));
-        pep: f64, |location: Location, _| location.or_empty().map_or(Ok(0.0), |l| l.parse::<f64>(NUMBER_ERROR));
-        mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<mzcore::system::thomson>);
-        rt: Time, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Time::new::<mzcore::system::time::s>);
+        score: Option<f64>, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR);
+        qvalue: Option<f64>, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR);
+        pep: Option<f64>, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR);
+        mz: Option<MassOverCharge>, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR).map(|v| v.map(MassOverCharge::new::<mzcore::system::thomson>));
+        rt: Option<Time>, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR).map(|v| v.map(Time::new::<mzcore::system::time::s>));
         ion_mobility: Option<f64>, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR);
         proteins: Vec<FastaIdentifier<String>>, |location: Location, _| location.trim_start_matches("['").trim_end_matches("']").array(',').map(|l| l.trim().trim_start_matches("\'").trim_end_matches("\'").parse(FASTA_ID_ERROR)).collect::<Result<Vec<_>, _>>();
-        rank: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
+        rank: Option<usize>, |location: Location, _| location.or_empty().parse::<usize>(NUMBER_ERROR);
         /// The source column containing a tag for the filetype detected by `psm_utils`, if recognised this also gives the PSI-MS term for this software
         source: (String, Option<mzcv::Term>), |location: Location, _| Ok((location.as_str().to_string(), match location.as_str().to_ascii_lowercase().as_str() {
             "comet" => Some(mzcv::term!(MS:1002251|Comet)),
@@ -155,7 +155,7 @@ impl PSMMetaData for PsmUtilsPSM {
     }
 
     fn original_confidence(&self) -> Option<(f64, mzcv::Term)> {
-        Some((self.score, mzcv::term!(MS:1001492|percolator:score)))
+        self.score.map(|s| (s, mzcv::term!(MS:1001492|percolator:score)))
     }
 
     fn original_local_confidence(&self) -> Option<&[f64]> {
@@ -163,13 +163,18 @@ impl PSMMetaData for PsmUtilsPSM {
     }
 
     fn other_scores(&self) -> Option<Cow<'_, [(f64, mzcv::Term)]>> {
-        Some(
-            vec![
-                (self.qvalue, mzcv::term!(MS:1002354|PSM-level q-value)),
-                (self.pep, mzcv::term!(MS:1001493|percolator:PEP)),
-            ]
-            .into(),
-        )
+        let mut scores = Vec::new();
+        if let Some(s) = self.qvalue {
+            scores.push((s, mzcv::term!(MS:1002354|PSM-level q-value)))
+        }
+        if let Some(s) = self.pep {
+            scores.push((s, mzcv::term!(MS:1001493|percolator:PEP)))
+        }
+        if scores.is_empty() {
+            None
+        } else {
+            Some(scores.into())
+        }
     }
 
     fn charge(&self) -> Option<Charge> {
@@ -183,7 +188,7 @@ impl PSMMetaData for PsmUtilsPSM {
     }
 
     fn retention_time(&self) -> Option<Time> {
-        Some(self.rt)
+        self.rt
     }
 
     fn scans(&self) -> SpectrumIds {
@@ -194,7 +199,7 @@ impl PSMMetaData for PsmUtilsPSM {
     }
 
     fn experimental_mz(&self) -> Option<MassOverCharge> {
-        Some(self.mz)
+        self.mz
     }
 
     fn proteins(&self) -> Cow<'_, [Self::Protein]> {
