@@ -18,6 +18,11 @@ use crate::{
 #[derive(Clone, Debug)]
 pub struct AlignIndex<const STEPS: u16, Source> {
     pub(super) sequences: Vec<(Source, DiagonalArray<Multi<Mass>, STEPS>)>,
+    distance_matrix: Option<(
+        DiagonalArray<f64, { u16::MAX }>,
+        AlignType,
+        AlignScoring<'static>,
+    )>,
     pub(super) mode: MassMode,
 }
 
@@ -25,6 +30,7 @@ impl<const S: u16, P> Default for AlignIndex<S, P> {
     fn default() -> Self {
         Self {
             sequences: Vec::new(),
+            distance_matrix: None,
             mode: MassMode::Monoisotopic,
         }
     }
@@ -51,19 +57,54 @@ impl<const STEPS: u16, Source: HasPeptidoform<Linear> + Clone> AlignIndex<STEPS,
             })
             .collect::<Vec<_>>();
 
-        Self { sequences, mode }
+        Self {
+            sequences,
+            distance_matrix: None,
+            mode,
+        }
     }
 
     /// Add a new sequence to the index
     pub fn add_sequence(&mut self, sequence: Source) {
         let masses = calculate_masses(sequence.cast_peptidoform(), self.mode);
+        if let Some((matrix, align_type, scoring)) = self.distance_matrix.as_mut() {
+            matrix.push_row(
+                self.sequences
+                    .iter()
+                    .map(|s| {
+                        align_cached(
+                            s.0.cast_peptidoform(),
+                            &s.1,
+                            sequence.cast_peptidoform(),
+                            &masses,
+                            *scoring,
+                            *align_type,
+                        )
+                        .distance()
+                    })
+                    .chain([0.0])
+                    .collect(),
+            );
+        }
         self.sequences.push((sequence, masses));
     }
 
     /// Retains only the elements specified by the predicate. Works using the same logic as
     /// [`Vec::retain`]
     pub fn retain(&mut self, f: impl Fn(&Source) -> bool) {
-        self.sequences.retain(|(s, _)| f(s))
+        let mut delete = Vec::new();
+        let mut index = 0;
+        self.sequences.retain(|(s, _)| {
+            let retain = f(s);
+            if !retain {
+                delete.push(index);
+            }
+            index += 1;
+            retain
+        });
+        if let Some((matrix, ..)) = self.distance_matrix.as_mut() {
+            matrix.delete_rows(&delete);
+        }
     }
 
     /// Align a single peptidoform to the index
@@ -142,6 +183,42 @@ impl<const STEPS: u16, Source: HasPeptidoform<Linear> + Clone> AlignIndex<STEPS,
     ) -> impl Iterator<Item = impl ExactSizeIterator<Item = Alignment<Source, Other>>> {
         others.into_iter().map(move |o| self.align_one(o, scoring, align_type))
     }
+
+    /// Get matrix with the distances between all sequences in this index. It uses
+    /// [`crate::Alignment::distance`] as metric.
+    /// # Panics
+    /// If more than [`u16::MAX`] sequences are given.
+    pub fn distance_matrix(
+        &mut self,
+        scoring: AlignScoring<'static>,
+        align_type: AlignType,
+    ) -> &DiagonalArray<f64, { u16::MAX }> {
+        debug_assert!(self.sequences.len() <= u16::MAX.into());
+        if self.distance_matrix.is_none()
+            || self
+                .distance_matrix
+                .as_ref()
+                .is_some_and(|(_, t, s)| *t != align_type || *s != scoring)
+        {
+            let mut matrix = DiagonalArray::<f64, { u16::MAX }>::new(self.sequences.len());
+            for (i, s) in self.sequences.iter().enumerate() {
+                matrix[[i, i]] = 0.0;
+                for (o, so) in self.sequences.iter().enumerate().take(i) {
+                    matrix[[i, o]] = align_cached(
+                        s.0.cast_peptidoform(),
+                        &s.1,
+                        so.0.cast_peptidoform(),
+                        &so.1,
+                        scoring,
+                        align_type,
+                    )
+                    .distance();
+                }
+            }
+            self.distance_matrix = Some((matrix, align_type, scoring));
+        }
+        &self.distance_matrix.as_ref().unwrap().0
+    }
 }
 
 impl<const STEPS: u16, Source: HasPeptidoform<Linear> + Clone + Sync + Send> Extend<Source>
@@ -216,7 +293,70 @@ impl<const STEPS: u16, Source: HasPeptidoform<Linear> + Clone + Sync + Send>
             })
             .collect::<Vec<_>>();
 
-        Self { sequences, mode }
+        Self {
+            sequences,
+            distance_matrix: None,
+            mode,
+        }
+    }
+
+    /// Get matrix with the distances between all sequences in this index. It uses
+    /// [`crate::Alignment::distance`] as metric.
+    /// # Panics
+    /// If more than [`u16::MAX`] sequences are given.
+    #[cfg(feature = "rayon")]
+    pub fn par_distance_matrix(
+        &mut self,
+        scoring: AlignScoring<'static>,
+        align_type: AlignType,
+    ) -> &DiagonalArray<f64, { u16::MAX }> {
+        debug_assert!(self.sequences.len() <= u16::MAX.into());
+        if self.distance_matrix.is_none()
+            || self
+                .distance_matrix
+                .as_ref()
+                .is_some_and(|(_, t, s)| *t != align_type || *s != scoring)
+        {
+            let mut matrix = DiagonalArray::<f64, { u16::MAX }>::new(self.sequences.len());
+            for results in (&self)
+                .sequences
+                .par_iter()
+                .enumerate()
+                .flat_map(|(i, s)| {
+                    (&self)
+                        .sequences
+                        .par_iter()
+                        .enumerate()
+                        .take(i)
+                        .map(move |(o, so)| (i, s, o, so))
+                })
+                .map(|(i, s, o, so)| {
+                    (
+                        i,
+                        o,
+                        align_cached(
+                            s.0.cast_peptidoform(),
+                            &s.1,
+                            so.0.cast_peptidoform(),
+                            &so.1,
+                            scoring,
+                            align_type,
+                        )
+                        .distance(),
+                    )
+                })
+                .collect_vec_list()
+            {
+                for (i, o, d) in results {
+                    matrix[[i, o]] = d;
+                }
+            }
+            for i in 0..self.sequences.len() {
+                matrix[[i, i]] = 0.0;
+            }
+            self.distance_matrix = Some((matrix, align_type, scoring));
+        }
+        &self.distance_matrix.as_ref().unwrap().0
     }
 }
 

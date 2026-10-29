@@ -214,16 +214,24 @@ impl<W: Write> MzTabWriter<W, Initial> {
         )?;
 
         if !self.metadata.id.is_empty() {
-            writeln!(self.writer, "MTD\tmzTab-ID\t{}", self.metadata.id)?;
+            writeln!(
+                self.writer,
+                "MTD\tmzTab-ID\t{}",
+                self.metadata.id.replace('\n', "␤")
+            )?;
         }
         if !self.metadata.title.is_empty() {
-            writeln!(self.writer, "MTD\ttitle\t{}", self.metadata.title)?;
+            writeln!(
+                self.writer,
+                "MTD\ttitle\t{}",
+                self.metadata.title.replace('\n', "␤")
+            )?;
         }
         if !self.metadata.description.is_empty() {
             writeln!(
                 self.writer,
                 "MTD\tdescription\t{}",
-                self.metadata.description
+                self.metadata.description.replace('\n', "␤")
             )?;
         }
         for (i, terms) in self.metadata.sample_processing.iter().enumerate() {

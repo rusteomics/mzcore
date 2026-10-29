@@ -23,7 +23,7 @@ fn seq(def: &str) -> Peptidoform<Linear> {
 fn simple() {
     // N = GG, N[Deamidated] = D, WGG = HY, HD = DH
     let sequences = vec![seq("AGGWHD"), seq("ANWHN[Deamidated]"), seq("AHYDH")];
-    let index = AlignIndex::<4, Peptidoform<Linear>>::new(sequences, MassMode::Monoisotopic);
+    let mut index = AlignIndex::<4, Peptidoform<Linear>>::new(sequences, MassMode::Monoisotopic);
     let alignment = index.multi_align(None, AlignScoring::default(), MultiAlignType::GLOBAL);
     let mut buf = String::new();
     alignment[0].debug_display(&mut buf);
@@ -42,7 +42,7 @@ fn gaps() {
         seq("RWNDGYAMEDYWGQG"),
         seq("RWGGDGFMDYWGQG"),
     ];
-    let index = AlignIndex::<4, Peptidoform<Linear>>::new(sequences, MassMode::Monoisotopic);
+    let mut index = AlignIndex::<4, Peptidoform<Linear>>::new(sequences, MassMode::Monoisotopic);
     let alignment = index.multi_align(None, AlignScoring::default(), MultiAlignType::GLOBAL);
     let mut buf = String::new();
     alignment[0].debug_display(&mut buf);
@@ -61,7 +61,7 @@ fn either_global() {
         seq("RWNDGYAMDYWGQG"),
         seq("GDGFMDYWGQG"),
     ];
-    let index = AlignIndex::<4, Peptidoform<Linear>>::new(sequences, MassMode::Monoisotopic);
+    let mut index = AlignIndex::<4, Peptidoform<Linear>>::new(sequences, MassMode::Monoisotopic);
     let alignment = index.multi_align(None, AlignScoring::default(), MultiAlignType::EITHER_GLOBAL);
     let mut buf = String::new();
     alignment[0].debug_display(&mut buf);
@@ -80,7 +80,7 @@ fn either_global_2() {
         seq("YW[U:Oxidation]DYWGQG"),
         seq("RWGGNGFYW[U:Oxidation]DYWGQG"),
     ];
-    let index = AlignIndex::<4, Peptidoform<Linear>>::new(sequences, MassMode::Monoisotopic);
+    let mut index = AlignIndex::<4, Peptidoform<Linear>>::new(sequences, MassMode::Monoisotopic);
     let alignment = index.multi_align(
         None,
         AlignScoring {
@@ -104,7 +104,7 @@ fn crash() {
         seq("WGG"),
         seq("VTC[U:Carboxymethyl]QGLSSPKSL"),
     ];
-    let index = AlignIndex::<4, Peptidoform<Linear>>::new(sequences, MassMode::Monoisotopic);
+    let mut index = AlignIndex::<4, Peptidoform<Linear>>::new(sequences, MassMode::Monoisotopic);
     let scoring = AlignScoring::<'_> {
         tolerance: mzcore::quantities::Tolerance::Relative(
             mzcore::system::Ratio::new::<mzcore::system::ratio::ppm>(20.0).into(),
@@ -227,7 +227,7 @@ fn properties_gaps() {
 #[test]
 fn inherit_aligned_length() {
     // N = GG, N[Deamidated] = D, WGG = HY, HD = DH
-    let index = AlignIndex::<4, Peptidoform<Linear>>::new(
+    let mut index = AlignIndex::<4, Peptidoform<Linear>>::new(
         [
             seq("WRGGDGFYAM[U:Oxidation]DYWGQG"),
             seq("RWGGDGFYAM[U:Oxidation]DYWGQG"),
@@ -266,7 +266,7 @@ fn inherit_aligned_length() {
 
 #[test]
 fn double_isobaric() {
-    let index = AlignIndex::<4, Peptidoform<Linear>>::new(
+    let mut index = AlignIndex::<4, Peptidoform<Linear>>::new(
         [seq("RWGGDGFYAMDYWGQG"), seq("RWNDGFYW[U:Oxidation]DYWGQG")],
         MassMode::Monoisotopic,
     );
@@ -295,7 +295,7 @@ fn double_isobaric() {
 
 #[test]
 fn bad_either_global() {
-    let index = AlignIndex::<4, Peptidoform<Linear>>::new(
+    let mut index = AlignIndex::<4, Peptidoform<Linear>>::new(
         [
             seq("HPVYTFG"),
             seq("[U:Carboxymethyl]-AARVTDJDJGVYYAKJGVYYAFQGSHVPYTFGG"),
@@ -322,7 +322,7 @@ fn bad_either_global() {
 
 #[test]
 fn longer_isobaric() {
-    let index = AlignIndex::<4, Peptidoform<Linear>>::new(
+    let mut index = AlignIndex::<4, Peptidoform<Linear>>::new(
         [seq("ATRNK"), seq("AGRTGK"), seq("ARGTGK")],
         MassMode::Monoisotopic,
     );

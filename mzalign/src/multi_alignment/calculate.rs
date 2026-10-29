@@ -110,8 +110,9 @@ impl<Sequence, const STEPS: u16> MultiAlignmentLineTemp<'_, Sequence, STEPS> {
                     // Walk forward through the sequence until this step is exhausted
                     goal += aligned_step.max(sequence_step);
                     while aligned_index + initial_offset_correction < goal {
-                        aligned_index +=
-                            self.path[path_index].aligned_length - initial_offset_correction;
+                        aligned_index += self.path[path_index]
+                            .aligned_length
+                            .saturating_sub(initial_offset_correction);
                         initial_offset_correction = 0;
                         path_index += usize::from(path_index != self.path.len() - 1); // Just saturate for now
                     }
@@ -260,54 +261,24 @@ impl<'a, Sequence: HasPeptidoform<Linear>, const STEPS: u16>
 }
 
 impl<const STEPS: u16, Sequence: HasPeptidoform<Linear> + Clone> AlignIndex<STEPS, Sequence> {
-    /// Get matrix with the distances between all sequences in this index. It uses
-    /// [`crate::Alignment::distance`] as metric.
-    /// # Panics
-    /// If more than [`u16::MAX`] sequences are given.
-    pub fn distance_matrix(
-        &self,
-        scoring: AlignScoring<'_>,
-        align_type: MultiAlignType,
-    ) -> DiagonalArray<f64, { u16::MAX }> {
-        debug_assert!(self.sequences.len() <= u16::MAX.into());
-        let align_type = align_type.into();
-        let mut matrix = DiagonalArray::<f64, { u16::MAX }>::new(self.sequences.len());
-        for (i, s) in self.sequences.iter().enumerate() {
-            matrix[[i, i]] = 0.0;
-            for (o, so) in self.sequences.iter().enumerate().take(i) {
-                matrix[[i, o]] = align_cached(
-                    s.0.cast_peptidoform(),
-                    &s.1,
-                    so.0.cast_peptidoform(),
-                    &so.1,
-                    scoring,
-                    align_type,
-                )
-                .distance();
-            }
-        }
-        matrix
-    }
-
     /// Create a MMSA out of the sequences in this index. The maximal distance indicates the
     /// maximal distance between two clusters that can still be joined. If set to None this will
     /// merge all clusters. This can be used to return a set of motifs in otherwise unrelated
     /// sequences.
     pub fn multi_align(
-        &self,
+        &mut self,
         maximal_distance: Option<f64>,
-        scoring: AlignScoring<'_>,
+        scoring: AlignScoring<'static>,
         align_type: MultiAlignType,
     ) -> Vec<MultiAlignment<Sequence>> {
-        let distance_matrix = self.distance_matrix(scoring, align_type);
+        let distance_matrix = self.distance_matrix(scoring, align_type.into()).clone();
         self.multi_align_inner(maximal_distance, distance_matrix, scoring, align_type)
     }
 
     fn multi_align_inner(
         &self,
-        maximal_distance: Option<f64>, /* Maximal distance to join clusters, or join all if set
-                                        * to None */
-        mut distance_matrix: DiagonalArray<f64, { u16::MAX }>,
+        maximal_distance: Option<f64>,
+        distance_matrix: DiagonalArray<f64, { u16::MAX }>,
         scoring: AlignScoring<'_>,
         align_type: MultiAlignType,
     ) -> Vec<MultiAlignment<Sequence>> {
@@ -323,6 +294,8 @@ impl<const STEPS: u16, Sequence: HasPeptidoform<Linear> + Clone> AlignIndex<STEP
                 align_type,
             )];
         }
+
+        let mut distance_matrix = distance_matrix.clone();
 
         let mut nodes = Vec::with_capacity(self.sequences.len());
         for (i, s) in self.sequences.iter().enumerate() {
@@ -359,70 +332,17 @@ impl<const STEPS: u16, Sequence: HasPeptidoform<Linear> + Clone> AlignIndex<STEP
 impl<const STEPS: u16, Sequence: HasPeptidoform<Linear> + Clone + Send + Sync>
     AlignIndex<STEPS, Sequence>
 {
-    /// Get matrix with the distances between all sequences in this index. It uses
-    /// [`crate::Alignment::distance`] as metric.
-    /// # Panics
-    /// If more than [`u16::MAX`] sequences are given.
-    #[cfg(feature = "rayon")]
-    pub fn par_distance_matrix(
-        &self,
-        scoring: AlignScoring<'_>,
-        align_type: MultiAlignType,
-    ) -> DiagonalArray<f64, { u16::MAX }> {
-        use rayon::prelude::*;
-        debug_assert!(self.sequences.len() <= u16::MAX.into());
-        let align_type = align_type.into();
-        let mut matrix = DiagonalArray::<f64, { u16::MAX }>::new(self.sequences.len());
-        for results in self
-            .sequences
-            .par_iter()
-            .enumerate()
-            .flat_map(move |(i, s)| {
-                self.sequences
-                    .par_iter()
-                    .enumerate()
-                    .take(i)
-                    .map(move |(o, so)| (i, s, o, so))
-            })
-            .map(|(i, s, o, so)| {
-                (
-                    i,
-                    o,
-                    align_cached(
-                        s.0.cast_peptidoform(),
-                        &s.1,
-                        so.0.cast_peptidoform(),
-                        &so.1,
-                        scoring,
-                        align_type,
-                    )
-                    .distance(),
-                )
-            })
-            .collect_vec_list()
-        {
-            for (i, o, d) in results {
-                matrix[[i, o]] = d;
-            }
-        }
-        for i in 0..self.sequences.len() {
-            matrix[[i, i]] = 0.0;
-        }
-
-        matrix
-    }
-
     /// This parallelizes the distance matrix calculation, the multiple sequence merging is still
     /// done sequentially
     #[cfg(feature = "rayon")]
     pub fn par_multi_align(
-        &self,
+        &mut self,
         maximal_distance: Option<f64>, /* Maximal distance to join clusters, or join all if set
                                         * to None */
-        scoring: AlignScoring<'_>,
+        scoring: AlignScoring<'static>,
         align_type: MultiAlignType,
     ) -> Vec<MultiAlignment<Sequence>> {
-        let distance_matrix = self.par_distance_matrix(scoring, align_type);
+        let distance_matrix = self.par_distance_matrix(scoring, align_type.into()).clone();
         self.multi_align_inner(maximal_distance, distance_matrix, scoring, align_type)
     }
 }

@@ -4,7 +4,7 @@ use std::fmt::{Debug, Write};
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct DiagonalArray<T, const DEPTH: u16> {
     len: usize,
-    data: Box<[T]>,
+    data: Vec<T>,
 }
 
 impl<T, const DEPTH: u16> DiagonalArray<T, DEPTH> {
@@ -20,8 +20,7 @@ impl<T, const DEPTH: u16> DiagonalArray<T, DEPTH> {
         (mi + 1) * mi / 2 + n.saturating_sub(depth) * depth
     }
 
-    /// Calculate the index of a given point (along the first axis; n) into the array, with a given
-    /// depth
+    /// Get an iterator over the elements
     fn iter(&self) -> impl Iterator<Item = (&T, [usize; 2])> + '_ {
         let mut index = [0, 0];
         self.data.iter().take(Self::length(self.len)).map(move |v| {
@@ -61,6 +60,35 @@ impl<T, const DEPTH: u16> DiagonalArray<T, DEPTH> {
         debug_assert!(self.validate_indices(index));
         let index = Self::length(index[0]) + index[1];
         unsafe { self.data.get_unchecked(index) }
+    }
+
+    /// Push one more row to the end of this matrix, returns `false` if this row was not the correct
+    /// length.
+    pub(super) fn push_row(&mut self, mut row: Vec<T>) -> bool {
+        if row.len() == (DEPTH as usize).min(self.len + 1) {
+            self.len += 1;
+            self.data.append(&mut row);
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Delete rows identified by the given indices, deletes the row in question plus any columns
+    /// referencing that row. If the index is out of range nothing happens.
+    pub(super) fn delete_rows(&mut self, indices: &[usize]) {
+        self.len -= 1;
+        let mut current_index = [0, 0];
+        self.data.retain(|_v| {
+            if current_index[0] == current_index[1] {
+                current_index = [current_index[0] + 1, 0];
+            } else {
+                current_index = [current_index[0], current_index[1] + 1];
+            }
+            let retain =
+                !indices.contains(&current_index[0]) && !indices.contains(&current_index[1]);
+            retain
+        })
     }
 }
 

@@ -954,9 +954,11 @@ fn parse_metadata<'a>(
                 let term = CVTerm::from_str(&line[fields[2].clone()])?;
                 metadata.protein_search_engines.push(term);
             }
-            "description" => metadata.description = line[fields[2].clone()].into(),
-            "title" => metadata.title = line[fields[2].clone()].into(),
-            "mztab-id" => metadata.id = line[fields[2].clone()].into(),
+            "description" => {
+                metadata.description = line[fields[2].clone()].replace('␤', "\n").into()
+            }
+            "title" => metadata.title = line[fields[2].clone()].replace('␤', "\n").into(),
+            "mztab-id" => metadata.id = line[fields[2].clone()].replace('␤', "\n").into(),
             "mztab-mode" => {
                 metadata.mode = match &line[fields[2].clone()] {
                     "Summary" => MzTabMode::Summary,
