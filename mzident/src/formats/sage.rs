@@ -31,8 +31,10 @@ format_family!(
     required {
         aligned_rt: Ratio, |location: Location, _| location.parse(NUMBER_ERROR).map(Ratio::new::<mzcore::system::ratio::fraction>);
         decoy: bool, |location: Location, _| location.parse::<i8>(NUMBER_ERROR).map(|v| v == -1);
+        /// Difference in hyperscore between this and the best candidate sequence for this spectrum
         delta_best: f64, |location: Location, _| location.parse(NUMBER_ERROR);
         delta_mobility: f64, |location: Location, _| location.parse(NUMBER_ERROR);
+        /// Difference in hyperscore between this and the next best candidate sequence for this spectrum
         delta_next: f64, |location: Location, _| location.parse(NUMBER_ERROR);
         delta_rt_model: f64, |location: Location, _| location.parse(NUMBER_ERROR);
         /// Experimental mass
@@ -194,13 +196,20 @@ impl PSMMetaData for SagePSM {
     }
 
     fn other_scores(&self) -> Option<Cow<'_, [(f64, mzcv::Term)]>> {
-        // TODO: there are more scores in there but they do not have good terms in PSI-MS
+        // TODO: add here when PR is merged: delta_next, delta best, poisson, and term for
+        // discriminant + better term for PEP
         Some(Cow::Owned(vec![
+            (self.posterior_error, mzcv::term!(MS:1001493|percolator:PEP)),
+            (self.spectrum_q, mzcv::term!(MS:1002354|PSM-level q-value)),
+            (self.hyperscore, mzcv::term!(MS:1001331|X!Tandem:hyperscore)),
             (
                 self.matched_intensity_pct.get::<mzcore::system::ratio::fraction>(),
                 mzcv::term!(MS:1003166|assigned intensity fraction),
             ),
-            (self.posterior_error, mzcv::term!(MS:1001493|percolator:PEP)),
+            (
+                self.matched_peaks as f64,
+                mzcv::term!(MS:1001121|number of matched peaks),
+            ),
         ]))
     }
 
