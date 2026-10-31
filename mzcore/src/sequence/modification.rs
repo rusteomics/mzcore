@@ -2,6 +2,7 @@
 //! modifications in your own code.
 
 use std::{
+    borrow::Cow,
     collections::{BTreeSet, HashMap, HashSet},
     fmt::{Display, Write},
     path::Path,
@@ -722,6 +723,40 @@ impl Space for CrossId {
 }
 
 impl CrossId {
+    /// Get the parts of this cross-id as strings for easy printing
+    pub fn to_text(&self) -> (Option<&'_ str>, Cow<'_, str>) {
+        match self {
+            Self::Article(a) => (Some("Article"), Cow::Borrowed(a)),
+            Self::Beilstein(a) => (Some("Beilstein"), Cow::Owned(a.to_string())),
+            Self::Book(a) => (Some("Book"), Cow::Borrowed(a)),
+            Self::CAS(a, b, c) => (Some("CAS"), Cow::Owned(format!("{a:02}-{b:02}-{c}"))),
+            Self::ChEBI(a) => (Some("CHEBI"), Cow::Owned(a.to_string())),
+            Self::ChemicalBook(a) => (Some("ChemicalBook"), Cow::Borrowed(a)),
+            Self::ChemSpider(a) => (Some("ChemSpider"), Cow::Owned(a.to_string())),
+            Self::COMe(a) => (Some("COMe"), Cow::Borrowed(a)),
+            Self::Deltamass(a) => (Some("DeltaMass"), Cow::Owned(a.to_string())),
+            Self::DOI(a) => (Some("DOI"), Cow::Borrowed(a)),
+            Self::EC(a, b, c, d, p) => (
+                Some("EC"),
+                Cow::Owned(format!("{a}.{b}.{c}.{}{d}", if *p { "n" } else { "" })),
+            ),
+            Self::Findmod(a) => (Some("FindMod"), Cow::Borrowed(a)),
+            Self::GO(a) => (Some("GO"), Cow::Owned(a.to_string())),
+            Self::MDL(a) => (Some("MDL"), Cow::Borrowed(a)),
+            Self::Mod(a, b, _) => (Some(a.name()), Cow::Owned(b.to_string())),
+            Self::OMSSA(a) => (Some("OMSSA"), Cow::Owned(a.to_string())),
+            Self::Other(a) => (None, Cow::Borrowed(a)),
+            Self::Patent(a) => (Some("Patent"), Cow::Borrowed(a)),
+            Self::PDB(a) => (Some("PDB"), Cow::Borrowed(a)),
+            Self::PDBHet(a) => (Some("PDBHet"), Cow::Borrowed(a)),
+            Self::PubChemCompound(a) => (Some("PubChem_Compound"), Cow::Owned(a.to_string())),
+            Self::PubChemSubstance(a) => (Some("PubChem_Substance"), Cow::Owned(a.to_string())),
+            Self::PubMed(a) => (Some("PMID"), Cow::Owned(a.to_string())),
+            Self::Uniprot(a) => (Some("Uniprot"), Cow::Borrowed(a)),
+            Self::URL(name, b) => (Some(name.as_deref().unwrap_or("URL")), Cow::Borrowed(b)),
+        }
+    }
+
     /// Get a URL to resolve this cross-id
     pub fn url(&self) -> Option<String> {
         match self {
