@@ -49,6 +49,26 @@ pub struct OboStanza {
     pub relationship: Vec<(RelationType, OboIdentifier, Vec<Modifier>, Comment)>,
 }
 
+impl Ord for OboStanza {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.stanza_type.cmp(&other.stanza_type).then(self.id.cmp(&other.id))
+    }
+}
+
+impl PartialOrd for OboStanza {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for OboStanza {
+    fn eq(&self, other: &Self) -> bool {
+        self.stanza_type == other.stanza_type && self.id == other.id
+    }
+}
+
+impl Eq for OboStanza {}
+
 /// An Obo relation type.
 #[derive(Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum RelationType {
