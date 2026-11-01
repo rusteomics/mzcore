@@ -219,11 +219,11 @@ impl Display for SynonymScope {
 /// The type for an Obo stanza
 #[derive(Clone, Copy, Debug, Decode, Default, Encode, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum OboStanzaType {
+    /// A Typedef stanza
+    Typedef,
     /// A Term stanza
     #[default]
     Term,
-    /// A Typedef stanza
-    Typedef,
     /// An instance stanza, generally not used
     Instance,
 }
