@@ -326,8 +326,8 @@ pub enum CrossId {
     GO(AccessionCode),
     /// A deltamass ID
     Deltamass(usize),
-    /// A digital object identifier
-    DOI(Box<str>),
+    /// A digital object identifier '10.<num>/<string>'
+    DOI(usize, Box<str>),
     /// A findmod ID
     Findmod(Box<str>),
     /// An MDL chemical database ID
@@ -422,7 +422,36 @@ impl TryFrom<(Option<Box<str>>, Box<str>)> for CrossId {
             Some("book") => Self::Book(value.1),
             Some("chemicalbookno") => Self::ChemicalBook(value.1),
             Some("come") => Self::COMe(value.1),
-            Some("doi") => Self::DOI(value.1.trim_start_matches("https://doi.org/").into()),
+            Some("doi") => {
+                let Some((n, t)) = value.1.trim_start_matches("https://doi.org/").split_once('/')
+                else {
+                    return Err(BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid DOI",
+                        "Missing slash",
+                        Context::default().lines(0, value.1.to_string()),
+                    ));
+                };
+                let Some(n) = n.strip_prefix("10.") else {
+                    return Err(BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid DOI",
+                        "Missing '10.' at the start",
+                        Context::default().lines(0, value.1.to_string()),
+                    ));
+                };
+                match n.parse() {
+                    Ok(v) => Self::DOI(v, t.into()),
+                    Err(err) => {
+                        return Err(BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid DOI",
+                            format!("The DOI identifier number {}", explain_number_error(&err)),
+                            Context::default().lines(0, value.1.to_string()),
+                        ));
+                    }
+                }
+            }
             Some("epo" | "wipo" | "uspto") => Self::Patent(value.1),
             Some("findmod") => Self::Findmod(value.1),
             Some("http") => Self::URL(None, format!("http:{}", value.1).into_boxed_str()),
@@ -658,6 +687,7 @@ impl FromStr for CrossId {
 }
 
 impl Display for CrossId {
+    /// Formatting as far as possible follows: <https://current.geneontology.org/metadata/GO.xrf_abbs>
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Article(a) => write!(f, "Article:{a}"),
@@ -669,7 +699,7 @@ impl Display for CrossId {
             Self::ChemSpider(a) => write!(f, "ChemSpider:{a}"),
             Self::COMe(a) => write!(f, "COMe:{a}"),
             Self::Deltamass(a) => write!(f, "DeltaMass:{a}"),
-            Self::DOI(a) => write!(f, "DOI:{a}"),
+            Self::DOI(a, b) => write!(f, "DOI:10.{a}/{b}"),
             Self::EC(a, b, c, d, p) => write!(f, "EC:{a}.{b}.{c}.{}{d}", if *p { "n" } else { "" }),
             Self::Findmod(a) => write!(f, "FindMod:{a}"),
             Self::GO(a) => write!(f, "GO:{a}"),
@@ -696,6 +726,7 @@ impl Space for CrossId {
             Self::EC(a, b, c, d, p) => a.space() + b.space() + c.space() + d.space() + p.space(),
             Self::GO(a) => a.space(),
             Self::Mod(a, b, c) => a.space() + b.space() + c.space(),
+            Self::DOI(a, b) => a.space() + b.space(),
             Self::Beilstein(a)
             | Self::ChEBI(a)
             | Self::ChemSpider(a)
@@ -708,7 +739,6 @@ impl Space for CrossId {
             | Self::Book(a)
             | Self::ChemicalBook(a)
             | Self::COMe(a)
-            | Self::DOI(a)
             | Self::Findmod(a)
             | Self::MDL(a)
             | Self::Other(a)
@@ -735,7 +765,7 @@ impl CrossId {
             Self::ChemSpider(a) => (Some("ChemSpider"), Cow::Owned(a.to_string())),
             Self::COMe(a) => (Some("COMe"), Cow::Borrowed(a)),
             Self::Deltamass(a) => (Some("DeltaMass"), Cow::Owned(a.to_string())),
-            Self::DOI(a) => (Some("DOI"), Cow::Borrowed(a)),
+            Self::DOI(a, b) => (Some("DOI"), Cow::Owned(format!("10.{a}/{b}"))),
             Self::EC(a, b, c, d, p) => (
                 Some("EC"),
                 Cow::Owned(format!("{a}.{b}.{c}.{}{d}", if *p { "n" } else { "" })),
@@ -770,7 +800,7 @@ impl CrossId {
             Self::ChemSpider(a) => Some(format!(
                 "https://www.chemspider.com/Chemical-Structure.{a}.html"
             )),
-            Self::DOI(a) => Some(format!("https://doi.org/{a}")),
+            Self::DOI(a, b) => Some(format!("https://doi.org/10.{a}/{b}")),
             Self::EC(a, b, c, d, _p) => Some(format!(
                 "https://iubmb.qmul.ac.uk/enzyme/EC{a}/{b}/{c}/{d}.html"
             )), //TODO: not sure how the preliminary works here
