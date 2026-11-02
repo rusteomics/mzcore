@@ -3,8 +3,9 @@ use std::{collections::HashMap, fmt::Write};
 use itertools::Itertools;
 
 use crate::glycan::{
-    BaseSugar, Configuration, GlycanModificationDetails, GlycanSubstituent, HeptoseIsomer,
-    HexoseIsomer, MonoSaccharide, NonoseIsomer, PentoseIsomer,
+    BaseSugar, Configuration, GlycanModificationDetails, GlycanSubstituent,
+    GlycanSubstituentLocation, HeptoseIsomer, HexoseIsomer, MonoSaccharide, NonoseIsomer,
+    PentoseIsomer,
 };
 
 impl MonoSaccharide {
@@ -40,7 +41,7 @@ impl MonoSaccharide {
                 Configuration::LD => "LD",
             });
         }
-        let mut outer_modifications: HashMap<&str, Vec<Option<u8>>> = HashMap::new();
+        let mut outer_modifications: HashMap<&str, Vec<GlycanSubstituentLocation>> = HashMap::new();
         for (m, location) in &self.substituents {
             match m {
                 GlycanSubstituent::NAcetyl => nacetyl.push(*location),
@@ -59,26 +60,33 @@ impl MonoSaccharide {
                 _ => outer_modifications.entry(m.notation()).or_default().push(*location),
             }
         }
-        let show_mods = |locations: &[Option<u8>], name: &'static str| match modification_details {
-            GlycanModificationDetails::Full => {
-                if locations.is_empty() {
-                    String::new()
-                } else {
-                    locations.iter().fold(String::new(), |mut acc, l| {
-                        if !acc.is_empty() {
-                            let _ = acc.write_char(',');
-                        }
-                        if let Some(l) = l {
-                            let _ = write!(&mut acc, "{l}");
-                        } else {
-                            let _ = acc.write_char('?');
-                        }
-                        acc
-                    }) + name
+        let show_mods = |locations: &[GlycanSubstituentLocation], name: &'static str| {
+            match modification_details {
+                GlycanModificationDetails::Full => {
+                    if locations.is_empty() {
+                        String::new()
+                    } else {
+                        locations.iter().fold(String::new(), |mut acc, l| {
+                            if !acc.is_empty() {
+                                let _ = acc.write_char(',');
+                            }
+                            let _ = match l {
+                                GlycanSubstituentLocation::Single(None) => acc.write_char('?'),
+                                GlycanSubstituentLocation::Single(Some(l)) => {
+                                    write!(&mut acc, "{l}")
+                                }
+                                GlycanSubstituentLocation::Double(None) => acc.write_str("?-?"),
+                                GlycanSubstituentLocation::Double(Some((a, b))) => {
+                                    write!(&mut acc, "{a}-{b}")
+                                }
+                            };
+                            acc
+                        }) + name
+                    }
                 }
+                GlycanModificationDetails::OnlyContent => name.repeat(locations.len()),
+                GlycanModificationDetails::NeverShow => String::new(),
             }
-            GlycanModificationDetails::OnlyContent => name.repeat(locations.len()),
-            GlycanModificationDetails::NeverShow => String::new(),
         };
         inner_modifications.push_str(&show_mods(&didehydro, "en"));
         inner_modifications.push_str(&show_mods(&alcohol, "o"));
@@ -87,12 +95,20 @@ impl MonoSaccharide {
             .sorted()
             .map(|(name, locations)| show_mods(&locations, name))
             .collect();
-        let filter = |mut list: Vec<Option<u8>>, preferred: &[u8]| {
+        let filter = |mut list: Vec<GlycanSubstituentLocation>, preferred: &[u8]| {
             for p in preferred {
                 if let Some(p) = list
                     .iter()
-                    .position(|e| *e == Some(*p))
-                    .or_else(|| list.iter().position(Option::is_none))
+                    .position(|e| {
+                        if let GlycanSubstituentLocation::Single(Some(l)) = e {
+                            l.get() == *p
+                        } else {
+                            false
+                        }
+                    })
+                    .or_else(|| {
+                        list.iter().position(|l| *l == GlycanSubstituentLocation::Single(None))
+                    })
                 {
                     list.remove(p);
                 } else {
@@ -101,30 +117,31 @@ impl MonoSaccharide {
             }
             list
         };
-        let outer_mods = |nacetyl: Vec<Option<u8>>,
-                          acid: Vec<Option<u8>>,
-                          amino: Vec<Option<u8>>,
-                          deoxy: Vec<Option<u8>>,
-                          acetyl: Vec<Option<u8>>,
-                          glycolyl: Vec<Option<u8>>,
-                          nglycolyl: Vec<Option<u8>>,
-                          o_carboxy_ethyl: Vec<Option<u8>>| {
-            [
-                show_mods(&nacetyl, GlycanSubstituent::NAcetyl.notation()),
-                show_mods(&acid, GlycanSubstituent::Acid.notation()),
-                show_mods(&amino, GlycanSubstituent::Amino.notation()),
-                show_mods(&deoxy, GlycanSubstituent::Deoxy.notation()),
-                show_mods(&acetyl, GlycanSubstituent::Acetyl.notation()),
-                show_mods(&glycolyl, GlycanSubstituent::Glycyl.notation()),
-                show_mods(&nglycolyl, GlycanSubstituent::NGlycolyl.notation()),
-                show_mods(
-                    &o_carboxy_ethyl,
-                    GlycanSubstituent::OCarboxyEthyl.notation(),
-                ),
-                outer_modifications,
-            ]
-            .join("")
-        };
+        let outer_mods =
+            |nacetyl: Vec<GlycanSubstituentLocation>,
+             acid: Vec<GlycanSubstituentLocation>,
+             amino: Vec<GlycanSubstituentLocation>,
+             deoxy: Vec<GlycanSubstituentLocation>,
+             acetyl: Vec<GlycanSubstituentLocation>,
+             glycolyl: Vec<GlycanSubstituentLocation>,
+             nglycolyl: Vec<GlycanSubstituentLocation>,
+             o_carboxy_ethyl: Vec<GlycanSubstituentLocation>| {
+                [
+                    show_mods(&nacetyl, GlycanSubstituent::NAcetyl.notation()),
+                    show_mods(&acid, GlycanSubstituent::Acid.notation()),
+                    show_mods(&amino, GlycanSubstituent::Amino.notation()),
+                    show_mods(&deoxy, GlycanSubstituent::Deoxy.notation()),
+                    show_mods(&acetyl, GlycanSubstituent::Acetyl.notation()),
+                    show_mods(&glycolyl, GlycanSubstituent::Glycyl.notation()),
+                    show_mods(&nglycolyl, GlycanSubstituent::NGlycolyl.notation()),
+                    show_mods(
+                        &o_carboxy_ethyl,
+                        GlycanSubstituent::OCarboxyEthyl.notation(),
+                    ),
+                    outer_modifications,
+                ]
+                .join("")
+            };
         match &self.base_sugar {
             BaseSugar::Pentose(isomer) => (
                 Shape::Star,

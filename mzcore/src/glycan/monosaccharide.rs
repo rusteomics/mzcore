@@ -10,7 +10,10 @@ use thin_vec::ThinVec;
 
 use crate::{
     chemistry::{MassOutputMode, MolecularFormula, Molecule},
-    glycan::{BaseSugar, Configuration, GlycanSubstituent, HexoseIsomer},
+    glycan::{
+        BaseSugar, Configuration, GlycanSubstituent, GlycanSubstituentLeavingGroup,
+        GlycanSubstituentLocation, HexoseIsomer,
+    },
     parse_json::ParseJson,
     sequence::SequencePosition,
     space::{Space, UsedSpace},
@@ -20,7 +23,7 @@ use crate::{
 #[derive(Clone, Debug, Deserialize, Ord, PartialOrd, Serialize)]
 pub struct MonoSaccharide {
     pub(super) base_sugar: BaseSugar,
-    pub(super) substituents: ThinVec<(GlycanSubstituent, Option<u8>)>,
+    pub(super) substituents: ThinVec<(GlycanSubstituent, GlycanSubstituentLocation)>,
     pub(super) furanose: bool,
     pub(super) configuration: Option<Configuration>,
 }
@@ -36,7 +39,10 @@ impl Molecule for MonoSaccharide {
             + self
                 .substituents
                 .iter()
-                .map(|s| s.0.calculate_mass_inner::<Mode>(sequence_index, peptidoform_index))
+                .map(|s| {
+                    s.0.calculate_mass_inner::<Mode>(sequence_index, peptidoform_index)
+                        + s.1.calculate_mass_inner::<Mode>(sequence_index, peptidoform_index)
+                })
                 .sum::<Mode::Output>()
     }
 }
@@ -121,11 +127,11 @@ impl ParseJson for MonoSaccharide {
                         .map(|el| match el {
                             Value::Array(ref arr) if let [ref sub, ref num] = arr[..] => {
                                 GlycanSubstituent::from_json_value(sub.clone()).and_then(|sub| {
-                                    Option::from_json_value(num.clone()).map(|num| (sub, num))
+                                    GlycanSubstituentLocation::from_json_value(num.clone()).map(|num| (sub, num))
                                 })
                             }
                             sub @ Value::String(_) => {
-                                GlycanSubstituent::from_json_value(sub).map(|sub| (sub, None))
+                                GlycanSubstituent::from_json_value(sub).map(|sub| (sub, GlycanSubstituentLocation::Single(None, GlycanSubstituentLeavingGroup::Hydroxy)))
                             }
                             _ => Err(BoxedError::new(
                                 BasicKind::Error,
@@ -211,28 +217,124 @@ impl MonoSaccharide {
             BaseSugar::Hexose(isomer) if !self.furanose && self.configuration.is_none() => {
                 match *self.substituents.as_slice() {
                     [] => Cow::Borrowed("Hex"),
-                    [(GlycanSubstituent::Acid, _)] => Cow::Borrowed("aHex"),
                     [
-                        (GlycanSubstituent::Acid, _),
-                        (GlycanSubstituent::Deoxy, _),
-                        (GlycanSubstituent::Didehydro, _),
+                        (
+                            GlycanSubstituent::Acid,
+                            GlycanSubstituentLocation::Single(
+                                _,
+                                GlycanSubstituentLeavingGroup::Hydroxy,
+                            ),
+                        ),
+                    ] => Cow::Borrowed("aHex"),
+                    [
+                        (
+                            GlycanSubstituent::Acid,
+                            GlycanSubstituentLocation::Single(
+                                _,
+                                GlycanSubstituentLeavingGroup::Hydroxy,
+                            ),
+                        ),
+                        (
+                            GlycanSubstituent::Deoxy,
+                            GlycanSubstituentLocation::Single(
+                                _,
+                                GlycanSubstituentLeavingGroup::Hydroxy,
+                            ),
+                        ),
+                        (
+                            GlycanSubstituent::Didehydro,
+                            GlycanSubstituentLocation::Single(
+                                _,
+                                GlycanSubstituentLeavingGroup::Hydroxy,
+                            ),
+                        ),
                     ] => Cow::Borrowed("en,aHex"),
-                    [(GlycanSubstituent::Deoxy, _)] if isomer == Some(HexoseIsomer::Galactose) => {
-                        Cow::Borrowed("Fuc")
-                    }
-                    [(GlycanSubstituent::Deoxy, _)] => Cow::Borrowed("dHex"),
                     [
-                        (GlycanSubstituent::NAcetyl, _),
-                        (GlycanSubstituent::Sulfate, _),
+                        (
+                            GlycanSubstituent::Deoxy,
+                            GlycanSubstituentLocation::Single(
+                                _,
+                                GlycanSubstituentLeavingGroup::Hydroxy,
+                            ),
+                        ),
+                    ] if isomer == Some(HexoseIsomer::Galactose) => Cow::Borrowed("Fuc"),
+                    [
+                        (
+                            GlycanSubstituent::Deoxy,
+                            GlycanSubstituentLocation::Single(
+                                _,
+                                GlycanSubstituentLeavingGroup::Hydroxy,
+                            ),
+                        ),
+                    ] => Cow::Borrowed("dHex"),
+                    [
+                        (
+                            GlycanSubstituent::NAcetyl,
+                            GlycanSubstituentLocation::Single(
+                                _,
+                                GlycanSubstituentLeavingGroup::Hydroxy,
+                            ),
+                        ),
+                        (
+                            GlycanSubstituent::Sulfate,
+                            GlycanSubstituentLocation::Single(
+                                _,
+                                GlycanSubstituentLeavingGroup::Hydroxy,
+                            ),
+                        ),
                     ] => Cow::Borrowed("HexNAcS"),
                     [
-                        (GlycanSubstituent::Amino, _),
-                        (GlycanSubstituent::Sulfate, _),
+                        (
+                            GlycanSubstituent::Amino,
+                            GlycanSubstituentLocation::Single(
+                                _,
+                                GlycanSubstituentLeavingGroup::Hydroxy,
+                            ),
+                        ),
+                        (
+                            GlycanSubstituent::Sulfate,
+                            GlycanSubstituentLocation::Single(
+                                _,
+                                GlycanSubstituentLeavingGroup::Hydroxy,
+                            ),
+                        ),
                     ] => Cow::Borrowed("HexNS"),
-                    [(GlycanSubstituent::Amino, _)] => Cow::Borrowed("HexN"),
-                    [(GlycanSubstituent::NAcetyl, _)] => Cow::Borrowed("HexNAc"),
-                    [(GlycanSubstituent::Sulfate, _)] => Cow::Borrowed("HexS"),
-                    [(GlycanSubstituent::Phosphate, _)] => Cow::Borrowed("HexP"),
+                    [
+                        (
+                            GlycanSubstituent::Amino,
+                            GlycanSubstituentLocation::Single(
+                                _,
+                                GlycanSubstituentLeavingGroup::Hydroxy,
+                            ),
+                        ),
+                    ] => Cow::Borrowed("HexN"),
+                    [
+                        (
+                            GlycanSubstituent::NAcetyl,
+                            GlycanSubstituentLocation::Single(
+                                _,
+                                GlycanSubstituentLeavingGroup::Hydroxy,
+                            ),
+                        ),
+                    ] => Cow::Borrowed("HexNAc"),
+                    [
+                        (
+                            GlycanSubstituent::Sulfate,
+                            GlycanSubstituentLocation::Single(
+                                _,
+                                GlycanSubstituentLeavingGroup::Hydroxy,
+                            ),
+                        ),
+                    ] => Cow::Borrowed("HexS"),
+                    [
+                        (
+                            GlycanSubstituent::Phosphate,
+                            GlycanSubstituentLocation::Single(
+                                _,
+                                GlycanSubstituentLeavingGroup::Hydroxy,
+                            ),
+                        ),
+                    ] => Cow::Borrowed("HexP"),
                     _ => Cow::Owned(format!("{{{}}}", self.formula())),
                 }
             }
@@ -254,19 +356,73 @@ impl MonoSaccharide {
                 match *self.substituents.as_slice() {
                     [] => Cow::Borrowed("Non"),
                     [
-                        (GlycanSubstituent::Acetyl, _),
-                        (GlycanSubstituent::Acid, _),
-                        (GlycanSubstituent::Amino, _),
+                        (
+                            GlycanSubstituent::Acetyl,
+                            GlycanSubstituentLocation::Single(
+                                _,
+                                GlycanSubstituentLeavingGroup::Hydroxy,
+                            ),
+                        ),
+                        (
+                            GlycanSubstituent::Acid,
+                            GlycanSubstituentLocation::Single(
+                                _,
+                                GlycanSubstituentLeavingGroup::Hydroxy,
+                            ),
+                        ),
+                        (
+                            GlycanSubstituent::Amino,
+                            GlycanSubstituentLocation::Single(
+                                _,
+                                GlycanSubstituentLeavingGroup::Hydroxy,
+                            ),
+                        ),
                     ] => Cow::Borrowed("NeuAc"),
                     [
-                        (GlycanSubstituent::Acid, _),
-                        (GlycanSubstituent::Amino, _),
-                        (GlycanSubstituent::Glycolyl, _),
+                        (
+                            GlycanSubstituent::Acid,
+                            GlycanSubstituentLocation::Single(
+                                _,
+                                GlycanSubstituentLeavingGroup::Hydroxy,
+                            ),
+                        ),
+                        (
+                            GlycanSubstituent::Amino,
+                            GlycanSubstituentLocation::Single(
+                                _,
+                                GlycanSubstituentLeavingGroup::Hydroxy,
+                            ),
+                        ),
+                        (
+                            GlycanSubstituent::Glycolyl,
+                            GlycanSubstituentLocation::Single(
+                                _,
+                                GlycanSubstituentLeavingGroup::Hydroxy,
+                            ),
+                        ),
                     ] => Cow::Borrowed("NeuGc"),
                     [
-                        (GlycanSubstituent::Acid, _),
-                        (GlycanSubstituent::Amino, _),
-                        (GlycanSubstituent::Deoxy, _),
+                        (
+                            GlycanSubstituent::Acid,
+                            GlycanSubstituentLocation::Single(
+                                _,
+                                GlycanSubstituentLeavingGroup::Hydroxy,
+                            ),
+                        ),
+                        (
+                            GlycanSubstituent::Amino,
+                            GlycanSubstituentLocation::Single(
+                                _,
+                                GlycanSubstituentLeavingGroup::Hydroxy,
+                            ),
+                        ),
+                        (
+                            GlycanSubstituent::Deoxy,
+                            GlycanSubstituentLocation::Single(
+                                _,
+                                GlycanSubstituentLeavingGroup::Hydroxy,
+                            ),
+                        ),
                     ] => Cow::Borrowed("Neu"),
                     _ => Cow::Owned(format!("{{{}}}", self.formula())),
                 }
@@ -281,7 +437,7 @@ impl MonoSaccharide {
             BaseSugar::Custom(_)
                 if matches!(self.substituents.as_slice(), [(
                     GlycanSubstituent::Phosphate,
-                    _
+                    GlycanSubstituentLocation::Single(_, GlycanSubstituentLeavingGroup::Hydroxy,),
                 )]) && !self.furanose
                     && self.configuration.is_none() =>
             {
@@ -290,7 +446,7 @@ impl MonoSaccharide {
             BaseSugar::Custom(_)
                 if matches!(self.substituents.as_slice(), [(
                     GlycanSubstituent::Sulfate,
-                    _
+                    GlycanSubstituentLocation::Single(_, GlycanSubstituentLeavingGroup::Hydroxy,),
                 )]) && !self.furanose
                     && self.configuration.is_none() =>
             {
@@ -308,11 +464,14 @@ impl MonoSaccharide {
     /// Check if this is a fucose
     pub fn is_fucose(&self) -> bool {
         self.base_sugar == BaseSugar::Hexose(Some(HexoseIsomer::Galactose))
-            && self.substituents.iter().any(|(s, _)| *s == GlycanSubstituent::Deoxy)
+            && self.substituents.iter().any(|(s, ..)| *s == GlycanSubstituent::Deoxy)
     }
 
     /// Create a new monosaccharide
-    pub fn new(sugar: BaseSugar, substituents: &[(GlycanSubstituent, Option<u8>)]) -> Self {
+    pub fn new(
+        sugar: BaseSugar,
+        substituents: &[(GlycanSubstituent, GlycanSubstituentLocation)],
+    ) -> Self {
         Self {
             base_sugar: sugar,
             substituents: substituents.iter().copied().sorted().collect(),
@@ -443,12 +602,17 @@ impl MonoSaccharide {
 #[cfg(test)]
 #[expect(clippy::missing_panics_doc)]
 mod tests {
+    use std::num::NonZeroU8;
+
     use itertools::Itertools;
 
     use crate::{
         chemistry::Molecule,
         glycan::{
-            glycan::{BaseSugar, Configuration, GlycanSubstituent, HexoseIsomer, PentoseIsomer},
+            glycan::{
+                BaseSugar, Configuration, GlycanSubstituent, GlycanSubstituentLeavingGroup,
+                GlycanSubstituentLocation, HexoseIsomer, PentoseIsomer,
+            },
             lists::GLYCAN_PARSE_LIST,
             monosaccharide::MonoSaccharide,
         },
@@ -511,71 +675,186 @@ mod tests {
         assert_eq!(
             parse("Gal2,3Ac24-1,6-1Py"),
             MonoSaccharide::new(BaseSugar::Hexose(Some(HexoseIsomer::Galactose)), &[
-                (GlycanSubstituent::Acetyl, Some(2)),
-                (GlycanSubstituent::Acetyl, Some(3)),
-                (GlycanSubstituent::Pyruvyl, None),
-                (GlycanSubstituent::Pyruvyl, None),
+                (
+                    GlycanSubstituent::Acetyl,
+                    GlycanSubstituentLocation::Single(
+                        NonZeroU8::new(2),
+                        GlycanSubstituentLeavingGroup::Hydroxy
+                    )
+                ),
+                (
+                    GlycanSubstituent::Acetyl,
+                    GlycanSubstituentLocation::Single(
+                        NonZeroU8::new(3),
+                        GlycanSubstituentLeavingGroup::Hydroxy
+                    )
+                ),
+                (
+                    GlycanSubstituent::Pyruvyl,
+                    GlycanSubstituentLocation::Double(
+                        None,
+                        GlycanSubstituentLeavingGroup::Hydroxy,
+                        GlycanSubstituentLeavingGroup::Hydroxy
+                    )
+                ),
+                (
+                    GlycanSubstituent::Pyruvyl,
+                    GlycanSubstituentLocation::Double(
+                        None,
+                        GlycanSubstituentLeavingGroup::Hydroxy,
+                        GlycanSubstituentLeavingGroup::Hydroxy
+                    )
+                ),
             ])
         );
         assert_eq!(
             parse("Gal2,3Ac2S"),
             MonoSaccharide::new(BaseSugar::Hexose(Some(HexoseIsomer::Galactose)), &[
-                (GlycanSubstituent::Acetyl, Some(2)),
-                (GlycanSubstituent::Acetyl, Some(3)),
-                (GlycanSubstituent::Sulfate, None),
+                (
+                    GlycanSubstituent::Acetyl,
+                    GlycanSubstituentLocation::Single(
+                        NonZeroU8::new(2),
+                        GlycanSubstituentLeavingGroup::Hydroxy
+                    )
+                ),
+                (
+                    GlycanSubstituent::Acetyl,
+                    GlycanSubstituentLocation::Single(
+                        NonZeroU8::new(3),
+                        GlycanSubstituentLeavingGroup::Hydroxy
+                    )
+                ),
+                (
+                    GlycanSubstituent::Sulfate,
+                    GlycanSubstituentLocation::Single(None, GlycanSubstituentLeavingGroup::Hydroxy)
+                ),
             ])
         );
         assert_eq!(
             parse("GlcNAc"),
             MonoSaccharide::new(BaseSugar::Hexose(Some(HexoseIsomer::Glucose)), &[(
                 GlycanSubstituent::NAcetyl,
-                None
+                GlycanSubstituentLocation::Single(None, GlycanSubstituentLeavingGroup::Hydroxy)
             )])
         );
         assert_eq!(
             parse("Gal6S"),
             MonoSaccharide::new(BaseSugar::Hexose(Some(HexoseIsomer::Galactose)), &[(
                 GlycanSubstituent::Sulfate,
-                Some(6),
+                GlycanSubstituentLocation::Single(
+                    NonZeroU8::new(6),
+                    GlycanSubstituentLeavingGroup::Hydroxy
+                )
             )])
         );
         assert_eq!(
             parse("GlcN2Gc"),
             MonoSaccharide::new(BaseSugar::Hexose(Some(HexoseIsomer::Glucose)), &[
-                (GlycanSubstituent::Amino, None),
-                (GlycanSubstituent::Glycolyl, Some(2)),
+                (
+                    GlycanSubstituent::Amino,
+                    GlycanSubstituentLocation::Single(None, GlycanSubstituentLeavingGroup::Hydroxy)
+                ),
+                (
+                    GlycanSubstituent::Glycolyl,
+                    GlycanSubstituentLocation::Single(
+                        NonZeroU8::new(2),
+                        GlycanSubstituentLeavingGroup::Hydroxy
+                    )
+                ),
             ])
         );
         assert_eq!(
             parse("GalNAc3S"),
             MonoSaccharide::new(BaseSugar::Hexose(Some(HexoseIsomer::Galactose)), &[
-                (GlycanSubstituent::NAcetyl, None),
-                (GlycanSubstituent::Sulfate, Some(3))
+                (
+                    GlycanSubstituent::NAcetyl,
+                    GlycanSubstituentLocation::Single(None, GlycanSubstituentLeavingGroup::Hydroxy)
+                ),
+                (
+                    GlycanSubstituent::Sulfate,
+                    GlycanSubstituentLocation::Single(
+                        NonZeroU8::new(3),
+                        GlycanSubstituentLeavingGroup::Hydroxy
+                    )
+                )
             ])
         );
         assert_eq!(
             parse("GlcN2,6S2"),
             MonoSaccharide::new(BaseSugar::Hexose(Some(HexoseIsomer::Glucose)), &[
-                (GlycanSubstituent::Amino, None),
-                (GlycanSubstituent::Sulfate, Some(2)),
-                (GlycanSubstituent::Sulfate, Some(6))
+                (
+                    GlycanSubstituent::Amino,
+                    GlycanSubstituentLocation::Single(None, GlycanSubstituentLeavingGroup::Hydroxy)
+                ),
+                (
+                    GlycanSubstituent::Sulfate,
+                    GlycanSubstituentLocation::Single(
+                        NonZeroU8::new(2),
+                        GlycanSubstituentLeavingGroup::Hydroxy
+                    )
+                ),
+                (
+                    GlycanSubstituent::Sulfate,
+                    GlycanSubstituentLocation::Single(
+                        NonZeroU8::new(6),
+                        GlycanSubstituentLeavingGroup::Hydroxy
+                    )
+                )
             ])
         );
         assert_eq!(
             parse("Tagf1,6P2"),
             MonoSaccharide::new(BaseSugar::Hexose(Some(HexoseIsomer::Tagatose)), &[
-                (GlycanSubstituent::Phosphate, Some(1)),
-                (GlycanSubstituent::Phosphate, Some(6))
+                (
+                    GlycanSubstituent::Phosphate,
+                    GlycanSubstituentLocation::Single(
+                        NonZeroU8::new(1),
+                        GlycanSubstituentLeavingGroup::Hydroxy
+                    )
+                ),
+                (
+                    GlycanSubstituent::Phosphate,
+                    GlycanSubstituentLocation::Single(
+                        NonZeroU8::new(6),
+                        GlycanSubstituentLeavingGroup::Hydroxy
+                    )
+                )
             ])
             .furanose()
         );
         assert_eq!(
             parse("Gal2,3Ac24-1,6-1Py"),
             MonoSaccharide::new(BaseSugar::Hexose(Some(HexoseIsomer::Galactose)), &[
-                (GlycanSubstituent::Acetyl, Some(2)),
-                (GlycanSubstituent::Acetyl, Some(3)),
-                (GlycanSubstituent::Pyruvyl, None),
-                (GlycanSubstituent::Pyruvyl, None),
+                (
+                    GlycanSubstituent::Acetyl,
+                    GlycanSubstituentLocation::Single(
+                        NonZeroU8::new(2),
+                        GlycanSubstituentLeavingGroup::Hydroxy
+                    )
+                ),
+                (
+                    GlycanSubstituent::Acetyl,
+                    GlycanSubstituentLocation::Single(
+                        NonZeroU8::new(3),
+                        GlycanSubstituentLeavingGroup::Hydroxy
+                    )
+                ),
+                (
+                    GlycanSubstituent::Pyruvyl,
+                    GlycanSubstituentLocation::Double(
+                        None,
+                        GlycanSubstituentLeavingGroup::Hydroxy,
+                        GlycanSubstituentLeavingGroup::Hydroxy
+                    )
+                ),
+                (
+                    GlycanSubstituent::Pyruvyl,
+                    GlycanSubstituentLocation::Double(
+                        None,
+                        GlycanSubstituentLeavingGroup::Hydroxy,
+                        GlycanSubstituentLeavingGroup::Hydroxy
+                    )
+                ),
             ])
         );
         assert_eq!(
@@ -588,16 +867,58 @@ mod tests {
             parse("Xyl-onic"),
             MonoSaccharide::new(BaseSugar::Pentose(Some(PentoseIsomer::Xylose)), &[(
                 GlycanSubstituent::Acid,
-                None
+                GlycanSubstituentLocation::Single(None, GlycanSubstituentLeavingGroup::Hydroxy)
             )])
         );
         assert_eq!(
             parse("Glc2,3,4,6Ac4"),
             MonoSaccharide::new(BaseSugar::Hexose(Some(HexoseIsomer::Glucose)), &[
-                (GlycanSubstituent::Acetyl, Some(2)),
-                (GlycanSubstituent::Acetyl, Some(3)),
-                (GlycanSubstituent::Acetyl, Some(4)),
-                (GlycanSubstituent::Acetyl, Some(6))
+                (
+                    GlycanSubstituent::Acetyl,
+                    GlycanSubstituentLocation::Single(
+                        NonZeroU8::new(2),
+                        GlycanSubstituentLeavingGroup::Hydroxy
+                    )
+                ),
+                (
+                    GlycanSubstituent::Acetyl,
+                    GlycanSubstituentLocation::Single(
+                        NonZeroU8::new(3),
+                        GlycanSubstituentLeavingGroup::Hydroxy
+                    )
+                ),
+                (
+                    GlycanSubstituent::Acetyl,
+                    GlycanSubstituentLocation::Single(
+                        NonZeroU8::new(4),
+                        GlycanSubstituentLeavingGroup::Hydroxy
+                    )
+                ),
+                (
+                    GlycanSubstituent::Acetyl,
+                    GlycanSubstituentLocation::Single(
+                        NonZeroU8::new(6),
+                        GlycanSubstituentLeavingGroup::Hydroxy
+                    )
+                )
+            ])
+        );
+        // This is an 'alternative LIP' (in WURCS terms) so the sulfate is supposed to be at 3 OR 4,
+        // but just force it as 3 for now.
+        assert_eq!(
+            parse("GalNAc3/4S"),
+            MonoSaccharide::new(BaseSugar::Hexose(Some(HexoseIsomer::Galactose)), &[
+                (
+                    GlycanSubstituent::NAcetyl,
+                    GlycanSubstituentLocation::Single(None, GlycanSubstituentLeavingGroup::Hydroxy)
+                ),
+                (
+                    GlycanSubstituent::Sulfate,
+                    GlycanSubstituentLocation::Single(
+                        NonZeroU8::new(3),
+                        GlycanSubstituentLeavingGroup::Hydroxy
+                    )
+                )
             ])
         );
     }
@@ -678,14 +999,14 @@ mod tests {
             MonoSaccharide::from_json(hexnac).unwrap(),
             MonoSaccharide::new(BaseSugar::Hexose(None), &[(
                 GlycanSubstituent::NAcetyl,
-                None
+                GlycanSubstituentLocation::Single(None, GlycanSubstituentLeavingGroup::Hydroxy)
             )])
         );
         assert_eq!(
             MonoSaccharide::from_json(fuc).unwrap(),
             MonoSaccharide::new(BaseSugar::Hexose(Some(HexoseIsomer::Galactose)), &[(
                 GlycanSubstituent::Deoxy,
-                None
+                GlycanSubstituentLocation::Single(None, GlycanSubstituentLeavingGroup::Hydroxy)
             )])
         );
     }

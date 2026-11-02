@@ -2,7 +2,10 @@ use std::sync::LazyLock;
 
 use mzcore::{
     chemistry::{ChargePoint, ChargeRange, NeutralLoss},
-    glycan::{BaseSugar, GlycanPeptideFragment, GlycanSubstituent, MonoSaccharide},
+    glycan::{
+        BaseSugar, GlycanPeptideFragment, GlycanSubstituent, GlycanSubstituentLeavingGroup,
+        GlycanSubstituentLocation, MonoSaccharide,
+    },
     molecular_formula,
     prelude::AminoAcid,
 };
@@ -685,7 +688,7 @@ pub(super) static GLYCAN_LOSSES: LazyLock<Vec<(MonoSaccharide, bool, Vec<Neutral
             (
                 MonoSaccharide::new(BaseSugar::Hexose(None), &[(
                     GlycanSubstituent::NAcetyl,
-                    None,
+                    GlycanSubstituentLocation::Single(None, GlycanSubstituentLeavingGroup::Hydroxy),
                 )]),
                 false,
                 vec![
@@ -699,18 +702,54 @@ pub(super) static GLYCAN_LOSSES: LazyLock<Vec<(MonoSaccharide, bool, Vec<Neutral
             ),
             (
                 MonoSaccharide::new(BaseSugar::Nonose(None), &[
-                    (GlycanSubstituent::Amino, None),
-                    (GlycanSubstituent::Acetyl, None),
-                    (GlycanSubstituent::Acid, None),
+                    (
+                        GlycanSubstituent::Amino,
+                        GlycanSubstituentLocation::Single(
+                            None,
+                            GlycanSubstituentLeavingGroup::Hydroxy,
+                        ),
+                    ),
+                    (
+                        GlycanSubstituent::Acetyl,
+                        GlycanSubstituentLocation::Single(
+                            None,
+                            GlycanSubstituentLeavingGroup::Hydroxy,
+                        ),
+                    ),
+                    (
+                        GlycanSubstituent::Acid,
+                        GlycanSubstituentLocation::Single(
+                            None,
+                            GlycanSubstituentLeavingGroup::Hydroxy,
+                        ),
+                    ),
                 ]),
                 false,
                 vec![NeutralLoss::Loss(1, molecular_formula!(H 2 O 1))],
             ),
             (
                 MonoSaccharide::new(BaseSugar::Nonose(None), &[
-                    (GlycanSubstituent::Amino, None),
-                    (GlycanSubstituent::Glycolyl, None),
-                    (GlycanSubstituent::Acid, None),
+                    (
+                        GlycanSubstituent::Amino,
+                        GlycanSubstituentLocation::Single(
+                            None,
+                            GlycanSubstituentLeavingGroup::Hydroxy,
+                        ),
+                    ),
+                    (
+                        GlycanSubstituent::Glycolyl,
+                        GlycanSubstituentLocation::Single(
+                            None,
+                            GlycanSubstituentLeavingGroup::Hydroxy,
+                        ),
+                    ),
+                    (
+                        GlycanSubstituent::Acid,
+                        GlycanSubstituentLocation::Single(
+                            None,
+                            GlycanSubstituentLeavingGroup::Hydroxy,
+                        ),
+                    ),
                 ]),
                 false,
                 vec![NeutralLoss::Loss(1, molecular_formula!(H 2 O 1))],

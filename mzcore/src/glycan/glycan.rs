@@ -1,4 +1,4 @@
-use std::{fmt::Display, hash::Hash, ops::RangeBounds};
+use std::{fmt::Display, hash::Hash, num::NonZeroU8, ops::RangeBounds};
 
 use context_error::*;
 use serde::{Deserialize, Serialize};
@@ -181,9 +181,27 @@ impl MonoSaccharide {
                     }
                     index += 7;
                     substituents.extend_from_slice(&[
-                        (GlycanSubstituent::Didehydro, None),
-                        (GlycanSubstituent::Deoxy, None),
-                        (GlycanSubstituent::Deoxy, None),
+                        (
+                            GlycanSubstituent::Didehydro,
+                            GlycanSubstituentLocation::Single(
+                                None,
+                                GlycanSubstituentLeavingGroup::Hydroxy,
+                            ),
+                        ),
+                        (
+                            GlycanSubstituent::Deoxy,
+                            GlycanSubstituentLocation::Single(
+                                None,
+                                GlycanSubstituentLeavingGroup::Hydroxy,
+                            ),
+                        ),
+                        (
+                            GlycanSubstituent::Deoxy,
+                            GlycanSubstituentLocation::Single(
+                                None,
+                                GlycanSubstituentLeavingGroup::Hydroxy,
+                            ),
+                        ),
                     ]);
                 }
                 Some(b',') => {
@@ -210,7 +228,16 @@ impl MonoSaccharide {
         // Get the prefix mods
         if !line[index..].starts_with("dig") && !line[index..].starts_with("dha") {
             if let Some(o) = line[index..].take_any(PREFIX_SUBSTITUENTS, |e| {
-                substituents.extend(std::iter::repeat_n((*e, None), amount));
+                substituents.extend(std::iter::repeat_n(
+                    (
+                        *e,
+                        GlycanSubstituentLocation::Single(
+                            None,
+                            GlycanSubstituentLeavingGroup::Hydroxy,
+                        ),
+                    ),
+                    amount,
+                ));
             }) {
                 index += o;
             }
@@ -296,7 +323,10 @@ impl MonoSaccharide {
 
             // Handle mods with no location, e.g. GlcNAc
             if locations.is_empty() {
-                locations.push(ModLocation::Single(None));
+                locations.push(GlycanSubstituentLocation::Single(
+                    None,
+                    GlycanSubstituentLeavingGroup::Hydroxy,
+                ));
             }
 
             // Ignore isomeric state
@@ -304,11 +334,24 @@ impl MonoSaccharide {
             index += line[index..].ignore(&["(x)", "(r)", "(s)"]);
 
             // If there is a double location use the double mods lookup, otherwise use single mods
-            if locations.iter().any(|l| matches!(l, ModLocation::Double(_, _))) {
+            if locations
+                .iter()
+                .any(|l| matches!(l, GlycanSubstituentLocation::Double(_, _, _)))
+            {
                 if let Some(o) = line[index..].take_any(DOUBLE_LINKED_POSTFIX_SUBSTITUENTS, |e| {
-                    sugar.substituents.extend(
-                        e.iter().flat_map(|s| std::iter::repeat_n((*s, None), locations.len())),
-                    );
+                    sugar.substituents.extend(e.iter().flat_map(|s| {
+                        std::iter::repeat_n(
+                            (
+                                *s,
+                                GlycanSubstituentLocation::Double(
+                                    None,
+                                    GlycanSubstituentLeavingGroup::Hydroxy,
+                                    GlycanSubstituentLeavingGroup::Hydroxy,
+                                ),
+                            ),
+                            locations.len(),
+                        )
+                    }));
                 }) {
                     index += o;
                 } else {
@@ -324,22 +367,16 @@ impl MonoSaccharide {
                 }
             } else {
                 // Mod or an element
-                if let Some(o) = line[index..].take_any(POSTFIX_SUBSTITUENTS, |e| {
-                    sugar.substituents.extend(locations.iter().map(|l| {
-                        (*e, match l {
-                            ModLocation::Single(l) => *l,
-                            ModLocation::Double(l, _) => *l, // TODO: handle double
-                        })
-                    }));
+                if let Some(o) = line[index..].take_any(POSTFIX_SUBSTITUENTS, |(e, leave)| {
+                    sugar
+                        .substituents
+                        .extend(locations.iter().map(|l| (*e, l.with_leaving_group(*leave))));
                 }) {
                     index += o;
                 } else if let Some(o) = line[index..].take_any(ELEMENT_PARSE_LIST, |e| {
-                    sugar.substituents.extend(locations.iter().map(|l| {
-                        (GlycanSubstituent::Element(*e), match l {
-                            ModLocation::Single(l) => *l,
-                            ModLocation::Double(l, _) => *l, // TODO: handle double
-                        })
-                    }));
+                    sugar
+                        .substituents
+                        .extend(locations.iter().map(|l| (GlycanSubstituent::Element(*e), *l)));
                 }) {
                     index += o;
                 } else {
@@ -347,9 +384,14 @@ impl MonoSaccharide {
                 }
             }
 
-            // Ignore the amount number, already determined before
+            // Ignore the amount number, already determined before.
+            // This is not present with double doubly linked mods for some reason.
             // A length of zero cannot happen so this is safe
-            if locations.len() != 1 {
+            if locations.len() != 1
+                && !locations
+                    .iter()
+                    .any(|l| matches!(l, GlycanSubstituentLocation::Double(_, _, _)))
+            {
                 index += 1 + locations.len().ilog10() as usize;
                 index = index.min(bytes.len());
             }
@@ -376,10 +418,67 @@ impl MonoSaccharide {
     // }
 }
 
-#[derive(Clone, Debug)]
-enum ModLocation {
-    Single(Option<u8>),
-    Double(Option<u8>, Option<u8>),
+/// The location of a glycan subsituent defined as carbon number
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+pub enum GlycanSubstituentLocation {
+    /// A substituent that attaches to one location
+    Single(Option<NonZeroU8>, GlycanSubstituentLeavingGroup),
+    /// A substituent that attaches to two locations
+    Double(
+        Option<(NonZeroU8, NonZeroU8)>,
+        GlycanSubstituentLeavingGroup,
+        GlycanSubstituentLeavingGroup,
+    ),
+}
+
+impl GlycanSubstituentLocation {
+    const fn with_leaving_group(self, l: GlycanSubstituentLeavingGroup) -> Self {
+        match self {
+            Self::Single(a, _) => Self::Single(a, l),
+            Self::Double(a, ..) => Self::Double(a, l, l),
+        }
+    }
+}
+
+impl Space for GlycanSubstituentLocation {
+    fn space(&self) -> UsedSpace {
+        (match self {
+            Self::Single(a, b) => a.space() + b.space(),
+            Self::Double(a, b, c) => a.space() + b.space() + c.space(),
+        })
+        .set_total::<Self>()
+    }
+}
+
+impl ParseJson for GlycanSubstituentLocation {
+    fn from_json_value(value: serde_json::Value) -> Result<Self, BoxedError<'static, BasicKind>> {
+        use_serde(value.clone()).or_else(|err| {
+            Option::from_json_value(value)
+                .map(|v| {
+                    Self::Single(
+                        v.and_then(NonZeroU8::new),
+                        GlycanSubstituentLeavingGroup::Hydroxy,
+                    )
+                })
+                .map_err(|_| err)
+        })
+    }
+}
+
+impl Molecule for GlycanSubstituentLocation {
+    fn calculate_mass_inner<Mode: MassOutputMode>(
+        &self,
+        sequence_index: SequencePosition,
+        peptidoform_index: usize,
+    ) -> Mode::Output {
+        match self {
+            Self::Single(_, a) => a.calculate_mass_inner::<Mode>(sequence_index, peptidoform_index),
+            Self::Double(_, b, c) => {
+                b.calculate_mass_inner::<Mode>(sequence_index, peptidoform_index)
+                    + c.calculate_mass_inner::<Mode>(sequence_index, peptidoform_index)
+            }
+        }
+    }
 }
 
 trait ParseHelper {
@@ -415,7 +514,7 @@ fn parse_locations<'a>(
     line: &str,
     start: usize,
     base_context: &Context<'a>,
-) -> Result<(usize, Vec<ModLocation>), BoxedError<'a, BasicKind>> {
+) -> Result<(usize, Vec<GlycanSubstituentLocation>), BoxedError<'a, BasicKind>> {
     let bytes = line.as_bytes();
     let mut index = start;
     let mut locations = Vec::new();
@@ -425,7 +524,10 @@ fn parse_locations<'a>(
         index += 1; // Unsure what this signifies exactly
     } else if bytes[index] == b'?' && bytes[index + 1] == b'?' {
         index += 2; // This occurs some times, not really sure why the double sign are needed though
-        locations.push(ModLocation::Single(None));
+        locations.push(GlycanSubstituentLocation::Single(
+            None,
+            GlycanSubstituentLeavingGroup::Hydroxy,
+        ));
         return Ok((index, locations));
     }
 
@@ -450,7 +552,7 @@ fn parse_locations<'a>(
             index += 1;
             None
         } else {
-            Some(num)
+            NonZeroU8::new(num)
         };
         if index < bytes.len()
             && bytes.get(index).is_some_and(|b| *b == b'-')
@@ -459,13 +561,25 @@ fn parse_locations<'a>(
             let l2 = if bytes[index + 1] == b'?' {
                 None
             } else {
-                Some(bytes[index + 1] - b'0') // Might need to handle longer numbers as well
+                NonZeroU8::new(bytes[index + 1] - b'0') // Might need to handle longer numbers as well
             };
             index += 2;
-            locations.push(ModLocation::Double(l, l2));
-        } else {
-            locations.push(ModLocation::Single(l));
+            if separator.is_none_or(|s| s != b'/') {
+                // Skip alternative locations
+                locations.push(GlycanSubstituentLocation::Double(
+                    l.zip(l2),
+                    GlycanSubstituentLeavingGroup::Hydroxy,
+                    GlycanSubstituentLeavingGroup::Hydroxy,
+                ));
+            }
+        } else if separator.is_none_or(|s| s != b'/') {
+            // Skip alternative locations
+            locations.push(GlycanSubstituentLocation::Single(
+                l,
+                GlycanSubstituentLeavingGroup::Hydroxy,
+            ));
         }
+
         if index < bytes.len()
             && (separator.is_none() && bytes[index] == b',' || bytes[index] == b'/')
         {
@@ -810,7 +924,7 @@ impl Molecule for GlycanSubstituent {
         _sequence_index: SequencePosition,
         _peptidoform_index: usize,
     ) -> Mode::Output {
-        let side = match self {
+        Mode::from_formula(match self {
             Self::Acetimidoyl => molecular_formula!(H 5 C 2 N 1),
             Self::Acetyl => molecular_formula!(H 3 C 2 O 1),
             Self::Acid => molecular_formula!(H -1 O 2), /* Together with the replacement below */
@@ -821,13 +935,13 @@ impl Molecule for GlycanSubstituent {
             Self::Amino => molecular_formula!(H 2 N 1),
             Self::Aric => molecular_formula!(H 3 O 3), /* Together with replacement below this */
             // is H2O2
-            Self::CargoxyEthylidene => molecular_formula!(H 3 C 3 O 3), /* double substituent, calculated to work with the additional side chain deletion */
-            Self::Deoxy => molecular_formula!(H 1),                     /* Together with the */
+            Self::CargoxyEthylidene => molecular_formula!(H 4 C 3 O 4),
+            Self::Deoxy => molecular_formula!(H 1), /* Together with the */
             // replacement below
             // this is O-1
             Self::Didehydro => molecular_formula!(H -1 O 1), /* Together with the replacement */
             // below this is H-2
-            Self::DiMethyl => molecular_formula!(H 5 C 2), /* assumed to replace the both the OH */
+            Self::DiMethyl => molecular_formula!(H 5 C 2), /* Assumed to replace the both the OH */
             // and H on a single carbon
             Self::Ethanolamine => molecular_formula!(H 6 C 2 N 1 O 1),
             Self::EtOH => molecular_formula!(H 5 C 2 O 2),
@@ -837,29 +951,61 @@ impl Molecule for GlycanSubstituent {
             Self::Glycolyl => molecular_formula!(H 3 C 2 O 2),
             Self::Glycyl | Self::NAcetyl => molecular_formula!(H 4 C 2 N 1 O 1),
             Self::HydroxyButyryl => molecular_formula!(H 7 C 4 O 2),
-            Self::HydroxyMethyl | Self::Ulo => molecular_formula!(H 3 C 1 O 2), /* Ulo: replaces */
-            // H, together
-            // with replacement
-            // below this is
-            // H2C1O1
+            Self::HydroxyMethyl => molecular_formula!(H 3 C 1 O 2),
+            Self::Ulo => molecular_formula!(H 3 C 1 O 1),
             Self::Lactyl => molecular_formula!(H 5 C 3 O 2),
             Self::Methyl => molecular_formula!(H 3 C 1),
             Self::NDiMe => molecular_formula!(H 6 C 2 N 1),
             Self::NFo => molecular_formula!(H 2 C 1 N 1 O 1),
             Self::NGlycolyl => molecular_formula!(H 4 C 2 N 1 O 2),
-            Self::OCarboxyEthyl => molecular_formula!(H 6 C 3 O 3), /* Replaces H, together with */
-            // replacement below this is
-            // H5C3O2
+            Self::OCarboxyEthyl => molecular_formula!(H 6 C 3 O 2),
             Self::PCholine => molecular_formula!(H 14 C 5 N 1 O 4 P 1),
             Self::Phosphate => molecular_formula!(H 2 O 4 P 1),
             Self::Pyruvyl => molecular_formula!(H 3 C 3 O 2),
             Self::Suc => molecular_formula!(H 6 C 4 N 1 O 3),
             Self::Sulfate => molecular_formula!(H 1 O 4 S 1),
             Self::Tauryl => molecular_formula!(H 6 C 2 N 1 O 3 S 1),
-            Self::Ulof => molecular_formula!(H 4 C 1 O 2), /* Replaces H, together with replacement below this is H3C1O1 */
+            Self::Ulof => molecular_formula!(H 4 C 1 O 1),
             Self::Water => molecular_formula!(H - 1),
-        };
-        Mode::from_formula(side) - Mode::from_formula(molecular_formula!(O 1 H 1)) // substituent so replaces a standard oxygen side chain
+        })
+    }
+}
+
+/// Any leaving group for an attached glycan substituent.
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+pub enum GlycanSubstituentLeavingGroup {
+    /// -H
+    Hydrogen,
+    /// -OH
+    Hydroxy,
+}
+
+impl Space for GlycanSubstituentLeavingGroup {
+    fn space(&self) -> UsedSpace {
+        (match self {
+            Self::Hydrogen => UsedSpace::stack(1),
+            Self::Hydroxy => UsedSpace::stack(1),
+        })
+        .set_total::<Self>()
+    }
+}
+
+impl Molecule for GlycanSubstituentLeavingGroup {
+    fn calculate_mass_inner<Mode: MassOutputMode>(
+        &self,
+        _sequence_index: SequencePosition,
+        _peptidoform_index: usize,
+    ) -> Mode::Output {
+        match self {
+            Self::Hydrogen => Mode::from_formula(molecular_formula!(H - 1)),
+            Self::Hydroxy => Mode::from_formula(molecular_formula!(O -1 H -1)),
+        }
+    }
+}
+
+impl ParseJson for GlycanSubstituentLeavingGroup {
+    fn from_json_value(value: serde_json::Value) -> Result<Self, BoxedError<'static, BasicKind>> {
+        use_serde(value.clone())
     }
 }
 

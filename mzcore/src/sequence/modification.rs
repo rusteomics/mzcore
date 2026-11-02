@@ -423,7 +423,11 @@ impl TryFrom<(Option<Box<str>>, Box<str>)> for CrossId {
             Some("chemicalbookno") => Self::ChemicalBook(value.1),
             Some("come") => Self::COMe(value.1),
             Some("doi") => {
-                let Some((n, t)) = value.1.trim_start_matches("https://doi.org/").split_once('/')
+                let Some((n, t)) = value
+                    .1
+                    .trim_start_matches("https://doi.org/")
+                    .trim_start_matches("https://pubs.acs.org/doi/")
+                    .split_once('/')
                 else {
                     return Err(BoxedError::new(
                         BasicKind::Error,

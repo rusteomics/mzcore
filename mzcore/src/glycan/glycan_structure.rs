@@ -656,6 +656,33 @@ mod test {
     }
 
     #[test]
+    fn correct_structure_g00645sw() {
+        let structure = GlycanStructure::from_short_iupac(
+            "GalNAc3/4S(b1-4)GlcNAc(b1-2)Man(a1-3)[Man(a1-3)[Man(a1-6)]Man(a1-6)]Man(b1-4)GlcNAc(b1-4)GlcNAc(b1-",
+            0..99,
+            0,
+        )
+        .unwrap();
+
+        assert_eq!(
+            structure.to_string(),
+            "HexNAc(HexNAc(Hex(Hex(HexNAc(HexNAcS)),Hex(Hex,Hex))))"
+        );
+    }
+
+    #[test]
+    fn correct_structure_g00707ll() {
+        let structure = GlycanStructure::from_short_iupac(
+            "Gal(a1-2)[Gal4-1,6-1Py(b1-4)Glc(a1-3)]Man(a1-2)Man(?1-",
+            0..54,
+            0,
+        )
+        .unwrap();
+
+        assert_eq!(structure.to_string(), "Hex(Hex(Hex,Hex({C12H12O5})))");
+    }
+
+    #[test]
     fn contains() {
         // G00053MO (HexNAc1Fuc1Hex1NeuAc1)
         //     ▽

@@ -632,6 +632,10 @@ fn parse_property_values(
                 // TODO: Extend the stub logic to handle the techniques and neutral losses
                 for (def, ..) in value {
                     if let OboValue::String(definition) = &def {
+                        // Skip higher order stubs
+                        if definition.chars().filter(|p| *p == ':').count() > 1 {
+                            continue;
+                        }
                         let (_techniques, definition) = definition.split_once('=').unwrap();
                         let (first, second) = definition.split_once(':').unwrap();
                         let mut split_first = first.split(',');

@@ -1,7 +1,10 @@
+use std::num::NonZeroU8;
+
 use crate::{
     chemistry::Element,
     glycan::{
-        BaseSugar, GlycanSubstituent, HexoseIsomer, MonoSaccharide,
+        BaseSugar, GlycanSubstituent, GlycanSubstituentLeavingGroup, GlycanSubstituentLocation,
+        HexoseIsomer, MonoSaccharide,
         wurcs::structs::{
             BackBone, Carbon, LIPOption, Lip, MAPSymbol, Residue, TerminalCarbon, Wurcs,
         },
@@ -112,7 +115,13 @@ impl Residue {
             | TerminalCarbon::AldehydeOrHemiacetal
             | TerminalCarbon::Hemiacetal
             | TerminalCarbon::CXH => (),
-            TerminalCarbon::CHHH => res.substituents.push((GlycanSubstituent::Deoxy, Some(1))),
+            TerminalCarbon::CHHH => res.substituents.push((
+                GlycanSubstituent::Deoxy,
+                GlycanSubstituentLocation::Single(
+                    NonZeroU8::new(1),
+                    GlycanSubstituentLeavingGroup::Hydroxy,
+                ),
+            )),
             o => todo!("Not added yet: {:?}", o),
         }
         // Assumes a C=OH
@@ -120,9 +129,13 @@ impl Residue {
             TerminalCarbon::CXH => (),
             // TerminalCarbon::CHHH => res.substituents.push((GlycanSubstituent::Deoxy, Some(2 +
             // middle_length))), /*
-            TerminalCarbon::CHHX => res
-                .substituents
-                .push((GlycanSubstituent::Alcohol, Some(2 + middle_length))),
+            TerminalCarbon::CHHX => res.substituents.push((
+                GlycanSubstituent::Alcohol,
+                GlycanSubstituentLocation::Single(
+                    NonZeroU8::new(2 + middle_length),
+                    GlycanSubstituentLeavingGroup::Hydroxy,
+                ),
+            )),
             o => todo!("Not added yet: {:?}", o),
         }
         let mut internal_cycle_count = 0;
@@ -141,8 +154,16 @@ impl Residue {
                         MAPSymbol::DoubleBond,
                         MAPSymbol::Element(Element::O),
                     ] => res.substituents.push((GlycanSubstituent::NAcetyl, match m.lips[0] {
-                        LIPOption::Known(Lip { position, .. }) => position,
-                        _ => None,
+                        LIPOption::Known(Lip { position, .. }) => {
+                            GlycanSubstituentLocation::Single(
+                                position.and_then(NonZeroU8::new),
+                                GlycanSubstituentLeavingGroup::Hydroxy,
+                            )
+                        }
+                        _ => GlycanSubstituentLocation::Single(
+                            None,
+                            GlycanSubstituentLeavingGroup::Hydroxy,
+                        ),
                     })),
                     other => {
                         dbg!(other);
