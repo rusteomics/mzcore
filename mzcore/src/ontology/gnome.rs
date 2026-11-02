@@ -84,11 +84,12 @@ impl CVSource for Gnome {
         Vec<BoxedError<'static, CVError>>,
     > {
         let reader = readers.next().unwrap();
-        let (version, (mut mods, errors)) = OboOntology::from_raw(reader)
+        let (version, (mut mods, mut errors)) = OboOntology::from_raw(reader)
             .map_err(|e| vec![e.convert(|_| CVError::FileCouldNotBeParsed)])
             .map(|obo| (obo.version(), parse_gnome(obo)))?;
         let read_mods = mods.clone();
-        let structures = parse_gnome_structures(readers.next().unwrap());
+        let (structures, structure_errors) = parse_gnome_structures(readers.next().unwrap());
+        errors.extend(structure_errors.into_iter().map(|e| e.convert(|_| CVError::ItemError)));
 
         // Fill all known info points
         for modification in mods.values_mut() {
@@ -235,15 +236,26 @@ fn parse_gnome(
                 obj.synonyms.iter().map(|s| (s.scope, s.synonym.clone())).collect(),
                 obj.property_values
                     .get(HAS_GLYTOUCAN_ID)
-                    .map(|v| {
-                        CrossId::Mod(
-                            Ontology::Gnome,
-                            v[0].0
-                                .to_string()
-                                .parse()
-                                .unwrap_or_else(|_| panic!("Invalid GlycToucanID {}", v[0].0)),
-                            crate::sequence::PlacementRule::Position(Position::Anywhere),
-                        )
+                    .and_then(|v| {
+                        let id = v[0].0.to_string().parse().ok().map(|id| {
+                            CrossId::Mod(
+                                Ontology::Gnome,
+                                id,
+                                crate::sequence::PlacementRule::Position(Position::Anywhere),
+                            )
+                        });
+                        if id.is_none() {
+                            combine_error(
+                                &mut errors,
+                                BoxedError::new(
+                                    CVError::ItemWarning,
+                                    "Invalid GlyToucanID",
+                                    "A GlyToucanID should be written like 'GNO:00707LL'",
+                                    Context::default().lines(0, v[0].0.to_string()),
+                                ),
+                            );
+                        }
+                        id
                     })
                     .into_iter()
                     .chain(obj.property_values.get(HAS_GLYTOUCAN_LINK).map(|v| {
@@ -369,15 +381,30 @@ struct GlycosmosList {
 }
 
 /// Parse the glycosmos glycan structures .csv file
-/// # Panics
-/// If the file is not valid.
 fn parse_gnome_structures(
     file: HashBufReader<Box<dyn std::io::Read>, impl sha2::Digest>,
-) -> HashMap<Box<str>, GlycosmosList> {
+) -> (
+    HashMap<Box<str>, GlycosmosList>,
+    Vec<BoxedError<'static, context_error::BasicKind>>,
+) {
     let mut glycans = HashMap::new();
-    let mut errors = 0;
-    for line in crate::csv::parse_csv_raw(file, b',', None, None).unwrap() {
-        let line = line.unwrap();
+    let mut errors = Vec::new();
+    let file = match crate::csv::parse_csv_raw(file, b',', None, None) {
+        Ok(v) => v,
+        Err(err) => {
+            combine_error(&mut errors, err);
+            return (glycans, errors);
+        }
+    };
+
+    for line in file {
+        let line = match line {
+            Ok(l) => l,
+            Err(err) => {
+                combine_error(&mut errors, err);
+                continue;
+            }
+        };
 
         // let _wurcs = line
         //     .index_column("wurcs")
@@ -396,96 +423,155 @@ fn parse_gnome_structures(
         //         }
         //     });
 
-        glycans.insert(
-            line.index_column("accession number").unwrap().0.into(),
-            GlycosmosList {
-                structure: line
-                    .index_column("iupac condensed")
-                    .ok()
-                    .filter(|p| !p.0.is_empty())
-                    .and_then(|(_, range)| {
-                        match GlycanStructure::from_short_iupac(
-                            line.line(),
-                            range.clone(),
-                            (line.line_index() + 1) as u32,
-                        ) {
-                            Ok(glycan) => Some(glycan),
-                            Err(error) => {
-                                if errors < 5 {
-                                    println!("{error}");
-                                }
-                                errors += 1;
+        let id = match line.index_column("accession number") {
+            Ok(v) => v.0.into(),
+            Err(err) => {
+                combine_error(&mut errors, err.to_owned());
+                continue;
+            }
+        };
+
+        glycans.insert(id, GlycosmosList {
+            structure: line
+                .index_column("iupac condensed")
+                .ok()
+                .filter(|p| !p.0.is_empty())
+                .and_then(|(_, range)| {
+                    match GlycanStructure::from_short_iupac(
+                        line.line(),
+                        range.clone(),
+                        (line.line_index() + 1) as u32,
+                    ) {
+                        Ok(glycan) => Some(glycan),
+                        Err(error) => {
+                            if errors.len() < 5 {
+                                println!("{error}");
+                            }
+                            errors.push(error.to_owned());
+                            None
+                        }
+                    }
+                }),
+            motif: line
+                .index_column("motif name(s)")
+                .ok()
+                .filter(|p| !p.0.is_empty())
+                .and_then(|p| p.0.split_once(':'))
+                .map(|(n, i)| (n.into(), i.to_ascii_lowercase().into_boxed_str())),
+            chebi: line
+                .index_column("chebi")
+                .ok()
+                .map(|p| p.0.to_string())
+                .filter(|p| !p.is_empty())
+                .and_then(|p| p.parse::<usize>().ok()),
+            pubchem: line
+                .index_column("pubchem cid")
+                .ok()
+                .map(|p| p.0.to_string())
+                .filter(|p| !p.is_empty())
+                .and_then(|p| p.parse::<usize>().ok()),
+            taxonomy: line
+                .index_column("taxonomy")
+                .ok()
+                .filter(|p| !p.0.is_empty())
+                .map(|p| {
+                    p.0.split(',').filter_map(|s| {
+                        let tax = s.rsplit_once(':');
+                        if tax.is_none() {
+                            combine_error(
+                                &mut errors,
+                                BoxedError::new(
+                                    context_error::BasicKind::Error,
+                                    "Invalid GNOme taxonomy",
+                                    "A taxonomy needs 'name:id' and the colon is missing.",
+                                    line.full_context().add_highlight((0, p.1.clone())).to_owned(),
+                                ),
+                            );
+                        }
+                        tax.and_then(|(n, i)| match i.parse::<usize>() {
+                            Ok(v) => Some((n.into(), v)),
+                            Err(err) => {
+                                combine_error(
+                                    &mut errors,
+                                    BoxedError::new(
+                                        context_error::BasicKind::Error,
+                                        "Invalid GNOme taxonomy",
+                                        format!(
+                                            "The taxnomoy id number is {}",
+                                            explain_number_error(&err)
+                                        ),
+                                        line.full_context()
+                                            .add_highlight((0, p.1.clone()))
+                                            .to_owned(),
+                                    ),
+                                );
                                 None
                             }
-                        }
-                    }),
-                motif: line
-                    .index_column("motif name(s)")
-                    .ok()
-                    .filter(|p| !p.0.is_empty())
-                    .and_then(|p| p.0.split_once(':'))
-                    .map(|(n, i)| (n.into(), i.to_ascii_lowercase().into_boxed_str())),
-                chebi: line
-                    .index_column("chebi")
-                    .ok()
-                    .map(|p| p.0.to_string())
-                    .filter(|p| !p.is_empty())
-                    .and_then(|p| p.parse::<usize>().ok()),
-                pubchem: line
-                    .index_column("pubchem cid")
-                    .ok()
-                    .map(|p| p.0.to_string())
-                    .filter(|p| !p.is_empty())
-                    .and_then(|p| p.parse::<usize>().ok()),
-                taxonomy: line
-                    .index_column("taxonomy")
-                    .ok()
-                    .filter(|p| !p.0.is_empty())
-                    .into_iter()
-                    .flat_map(|p| {
-                        p.0.split(',').map(|s| {
-                            s.rsplit_once(':')
-                                .map(|(n, i)| (n.into(), i.parse::<usize>().unwrap()))
-                                .unwrap()
                         })
                     })
-                    .collect(),
-                glycomeatlas: line
-                    .index_column("glycomeatlas")
+                })
+                .into_iter()
+                .flatten()
+                .collect(),
+            glycomeatlas: {
+                line.index_column("glycomeatlas")
                     .ok()
                     .filter(|p| !p.0.is_empty())
-                    .map(|p| p.0)
-                    .into_iter()
-                    .flat_map(|p| p.split(','))
-                    .map(|p| p.split_once(':').unwrap())
-                    .chunk_by(|(species, _)| (*species).to_string())
-                    .into_iter()
-                    .map(|(species, locations)| {
-                        (
-                            (*species).into(),
-                            locations
-                                .into_iter()
-                                .map(|location| {
-                                    location
-                                        .1
-                                        .trim_end_matches(')')
-                                        .split_once('(')
-                                        .map(|(l, o)| (l.into(), o.into()))
-                                        .unwrap()
-                                })
-                                .collect(),
-                        )
+                    .map_or_else(ThinVec::new, |column| {
+                        column
+                            .0
+                            .split(',')
+                            .filter_map(|p| {
+                                p.split_once(':').map_or_else(|| {
+                                        combine_error(
+                                            &mut errors,
+                                            BoxedError::new(
+                                            context_error::BasicKind::Error,
+                                            "Invalid Glycome Atlas location",
+                                            "A location needs 'species:organ(id)' and the colon is missing.",
+                                            line.full_context().add_highlight((0, column.1.clone())).to_owned(),
+                                            ),
+                                        );
+                                        None
+                                    },
+                                    Some)
+                            })
+                            .into_group_map_by(|(species, _)| (*species).to_string())
+                            .into_iter()
+                            .map(|(species, locations)| {
+                                (
+                                    (*species).into(),
+                                    locations
+                                        .into_iter()
+                                        .filter_map(|location| {
+                                            location
+                                                .1
+                                                .trim_end_matches(')')
+                                                .split_once('(')
+                                                .map_or_else(|| {
+                                                combine_error(
+                                                    &mut errors,
+                                                    BoxedError::new(
+                                                    context_error::BasicKind::Error,
+                                                    "Invalid Glycome Atlas location",
+                                                    "A location needs 'species:organ(id)' and the '(' is missing.",
+                                                    line.full_context().add_highlight((0, column.1.clone())).to_owned(),
+                                                    ),
+                                                );
+                                                None
+                                            },
+                                            |(l, o)| Some((l.into(), o.into())))
+                                        })
+                                        .collect(),
+                                )
+                            })
+                            .sorted_unstable()
+                            .collect()
                     })
-                    .collect(),
             },
-        );
+        });
     }
-    assert!(
-        errors <= 0,
-        "Total glycan structure reading errors: {errors} total read {}",
-        glycans.len()
-    );
-    glycans
+    (glycans, errors)
 }
 
 type GlycomeAtlas = ThinVec<(Box<str>, ThinVec<(Box<str>, Box<str>)>)>;
