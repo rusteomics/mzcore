@@ -89,7 +89,7 @@ impl MassOutputType for MolecularFormula {
         substitutions: &[(Element, Option<NonZeroU16>)],
     ) -> Option<Self> {
         if substitutions.is_empty() {
-            Some(self.clone())
+            Some(self)
         } else if substitutions.iter().all(|e| e.0.is_valid(e.1)) {
             let mut new_elements = self.elements.clone();
             for item in &mut new_elements {
@@ -102,7 +102,7 @@ impl MassOutputType for MolecularFormula {
             let result = Self {
                 elements: new_elements,
                 additional_mass: self.additional_mass,
-                labels: self.labels.clone(),
+                labels: self.labels,
             };
             Some(result.simplify())
         } else {

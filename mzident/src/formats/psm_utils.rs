@@ -4,7 +4,7 @@ use mzcore::{
     csv::{CsvLine, parse_csv},
     ontology::Ontologies,
     sequence::{FlankingSequence, Linear, Peptidoform, PeptidoformIonSet, SemiAmbiguous},
-    system::{Mass, MassOverCharge, Time, isize::Charge},
+    system::{MassOverCharge, Time, isize::Charge},
 };
 use serde::{Deserialize, Serialize};
 
@@ -165,10 +165,10 @@ impl PSMMetaData for PsmUtilsPSM {
     fn other_scores(&self) -> Option<Cow<'_, [(f64, mzcv::Term)]>> {
         let mut scores = Vec::new();
         if let Some(s) = self.qvalue {
-            scores.push((s, mzcv::term!(MS:1002354|PSM-level q-value)))
+            scores.push((s, mzcv::term!(MS:1002354|PSM-level q-value)));
         }
         if let Some(s) = self.pep {
-            scores.push((s, mzcv::term!(MS:1001493|percolator:PEP)))
+            scores.push((s, mzcv::term!(MS:1001493|percolator:PEP)));
         }
         if scores.is_empty() {
             None

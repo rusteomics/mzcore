@@ -254,8 +254,8 @@ format_family!(
                             let is_c_term = seq_index == len;
                             let seq_clone = seq.clone();
                             let mut remove = None;
-                            for (index, mut m) in seq.modifications.iter_mut().enumerate() {
-                                if let Modification::CrossLink{name, linker, ..} = &mut m{
+                            for (index, m) in seq.modifications.iter_mut().enumerate() {
+                                if let Modification::CrossLink{name, linker, ..} = m {
                                     if name == &CrossLinkName::Name("1".to_string().into_boxed_str()) {
                                         *linker = fitting[0].clone();
 

@@ -238,6 +238,7 @@ impl<A: ParseJson, B: ParseJson, C: ParseJson, D: ParseJson> ParseJson for (A, B
 impl<A: ParseJson, B: ParseJson, C: ParseJson, D: ParseJson, E: ParseJson> ParseJson
     for (A, B, C, D, E)
 {
+    #[expect(clippy::many_single_char_names)]
     fn from_json_value(value: Value) -> Result<Self, BoxedError<'static, BasicKind>> {
         if let Value::Array(mut arr) = value {
             if arr.len() == 5 {

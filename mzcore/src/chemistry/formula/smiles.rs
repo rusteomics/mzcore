@@ -480,11 +480,11 @@ fn tokenise_smiles<'a>(
                     index += 1;
                     if let Some(c @ (b'0'..=b'9')) = bytes.get(index) {
                         index += 1;
-                        charge = (c - b'0') as i8;
+                        charge = (c - b'0').cast_signed();
                         if let Some(c @ (b'0'..=b'9')) = bytes.get(index) {
                             index += 1;
                             charge *= 10;
-                            charge += (c - b'0') as i8;
+                            charge += (c - b'0').cast_signed();
                         }
                     }
                     if neg {

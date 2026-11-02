@@ -968,8 +968,8 @@ impl<'ontologies, R: BufRead> MzSpecLibTextParser<'ontologies, R> {
                         &self.last_peptidoform_ion_set,
                     )
                     .map_err(|mut errors| {
-                        if errors.len() == 1 {
-                            errors.pop().unwrap().to_owned().convert::<MzSpecLibErrorKind, BoxedError<'static, MzSpecLibErrorKind>>(
+                        if errors.len() == 1 && let Some(error) = errors.pop() {
+                            error.to_owned().convert::<MzSpecLibErrorKind, BoxedError<'static, MzSpecLibErrorKind>>(
                                 |_| MzSpecLibErrorKind::MzPAF,
                             )
                         } else {

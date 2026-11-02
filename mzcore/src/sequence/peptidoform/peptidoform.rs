@@ -1437,8 +1437,10 @@ impl<Complexity: AtMax<Linear>> Peptidoform<Complexity> {
 
         for (index, start) in sites.iter().enumerate() {
             for end in sites.iter().skip(index + 1).take(max_missed_cleavages + 1) {
-                if size_range.contains(&(end - start)) {
-                    result.push(self.sub_peptidoform((*start)..*end).unwrap());
+                if size_range.contains(&(end - start))
+                    && let Some(sub_peptide) = self.sub_peptidoform((*start)..*end)
+                {
+                    result.push(sub_peptide);
                 }
             }
         }
@@ -1466,7 +1468,6 @@ impl<Complexity: AtMax<Linear>> AmbiguousMolecule for Peptidoform<Complexity> {
     /// Gives the formulas for the whole peptide. With the global isotope modifications applied.
     /// (Any B/Z will result in multiple possible formulas.) Ignores any potential glycan
     /// fragmentation, assumes the glycan is always fully present.
-    #[expect(clippy::missing_panics_doc)] // Can not panic (unless state is already corrupted)
     fn calculate_masses_inner<Mode: MassOutputMode>(
         &self,
         _sequence_index: SequencePosition,

@@ -448,7 +448,7 @@ where
 }
 
 impl<Complexity: AtMax<Linear>> AmbiguousMolecule for SequenceElement<Complexity> {
-    fn calculate_masses_inner<Mode: MassOutputMode + ?Sized>(
+    fn calculate_masses_inner<Mode: MassOutputMode>(
         &self,
         sequence_index: SequencePosition,
         peptidoform_index: usize,

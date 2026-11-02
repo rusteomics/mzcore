@@ -204,6 +204,9 @@ impl PeptidoformIonSet {
         Self::pro_forma_main::<true>(base_context, line, range, ontologies)
     }
 
+    /// The main entry point for parsing of peptidoform ion sets.
+    /// # Errors
+    /// If the text did not follow the ProForma specification.
     fn pro_forma_main<'a, const STRICT: bool>(
         base_context: &Context<'a>,
         line: &'a str,
@@ -363,12 +366,19 @@ impl PeptidoformIonSet {
                 ),
             );
             Err(errors)
+        } else if let Some(peptidoform_ion_set) = Self::new(name, peptidoforms) {
+            Ok((peptidoform_ion_set, errors))
         } else {
-            Ok((
-                Self::new(name, peptidoforms)
-                    .expect("Global modifications not equal, please report this internal error"),
-                errors,
-            ))
+            combine_error(
+                &mut errors,
+                BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid definition",
+                    "Global modifications not equal, please report this internal error",
+                    base_context.clone().add_highlight((0, range)),
+                ),
+            );
+            Err(errors)
         }
     }
 

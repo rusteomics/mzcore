@@ -182,12 +182,6 @@ MS:1003186|library format version=1.0
         .map(|x| x.description.acquisition.scans[0].start_time)
         .collect();
 
-    fn assert_approx_eq(a: f64, b: f64, msg: &str) {
-        if (a - b).abs() > 1e-4 {
-            panic!("no aprox eq {a} {b}; {msg}");
-        }
-    }
-
     assert_approx_eq(times[0], times[1], "1719.50946 s is 28.658491 min");
     assert_approx_eq(times[0], times[2], "1719.50946 s is 1719509.46 ms");
     // mzdata documents start_time as minutes (mzdata::/src/spectrum/scan_properties.rs:138). The
@@ -195,4 +189,8 @@ MS:1003186|library format version=1.0
     for (idx, x) in times.iter().enumerate() {
         assert_approx_eq(*x, 28.658_491, &format!("got {x} at idx {idx}"));
     }
+}
+
+fn assert_approx_eq(a: f64, b: f64, msg: &str) {
+    assert!((a - b).abs() <= 1e-4, "no aprox eq {a} {b}; {msg}");
 }

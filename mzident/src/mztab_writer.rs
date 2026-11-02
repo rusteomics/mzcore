@@ -911,6 +911,8 @@ pub type MzTabOptionalColumn<'a, P, W> = (
 impl<W: Write, State> MzTabWriter<W, State> {
     /// Write comments to the file. This automatically converts newlines in the comments to '␤'
     /// (symbol for newline U+2424).
+    /// # Errors
+    /// If the underlying writer errors.
     pub fn write_comments(
         mut self,
         comments: impl IntoIterator<Item = impl ToString>,

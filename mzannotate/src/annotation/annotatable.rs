@@ -115,7 +115,7 @@ pub trait AnnotatableSpectrum<Mode: MassOutputMode>: Sized {
                         // likelihood on top
                         match annotated.peaks[index].annotations.binary_search(fragment) {
                             Ok(ai) | Err(ai) => {
-                                annotated.peaks[index].annotations.insert(ai, fragment.clone())
+                                annotated.peaks[index].annotations.insert(ai, fragment.clone());
                             }
                         }
                     }

@@ -14,7 +14,7 @@ use mzcore::{
     molecular_formula,
     prelude::*,
     quantities::{Multi, Tolerance},
-    system::{self, MassOverCharge, OrderedMassOverCharge, Ratio, isize::Charge},
+    system::{self, MassOverCharge, OrderedMassOverCharge, Quantity, Ratio, isize::Charge},
 };
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
@@ -53,15 +53,15 @@ impl<Mode: MassOutputMode> Clone for Fragment<Mode> {
     fn clone(&self) -> Self {
         Self {
             formula: self.formula.clone(),
-            charge: self.charge.clone(),
+            charge: self.charge,
             ion: self.ion.clone(),
             isotope: self.isotope.clone(),
-            peptidoform_ion_index: self.peptidoform_ion_index.clone(),
-            peptidoform_index: self.peptidoform_index.clone(),
+            peptidoform_ion_index: self.peptidoform_ion_index,
+            peptidoform_index: self.peptidoform_index,
             neutral_loss: self.neutral_loss.clone(),
-            deviation: self.deviation.clone(),
-            confidence: self.confidence.clone(),
-            auxiliary: self.auxiliary.clone(),
+            deviation: self.deviation,
+            confidence: self.confidence,
+            auxiliary: self.auxiliary,
         }
     }
 }
@@ -69,15 +69,15 @@ impl<Mode: MassOutputMode> Clone for Fragment<Mode> {
 impl<Mode: MassOutputMode> Default for Fragment<Mode> {
     fn default() -> Self {
         Self {
-            formula: Default::default(),
-            charge: Default::default(),
-            ion: Default::default(),
-            isotope: Default::default(),
-            peptidoform_ion_index: Default::default(),
-            peptidoform_index: Default::default(),
-            neutral_loss: Default::default(),
-            deviation: Default::default(),
-            confidence: Default::default(),
+            formula: Option::default(),
+            charge: Quantity::default(),
+            ion: FragmentType::default(),
+            isotope: ThinVec::default(),
+            peptidoform_ion_index: Option::default(),
+            peptidoform_index: Option::default(),
+            neutral_loss: ThinVec::default(),
+            deviation: Option::default(),
+            confidence: Option::default(),
             auxiliary: Default::default(),
         }
     }
@@ -182,11 +182,10 @@ impl<Mode: MassOutputMode> Fragment<Mode> {
         charge_carriers: &mut Option<CachedCharge>,
         charge_range: ChargeRange,
     ) -> Vec<Self> {
-        let charges = charge_carriers
-            .as_mut()
-            .map_or(vec![MolecularCharge::proton(Charge::default())], |c| {
-                c.range(charge_range)
-            });
+        let charges = charge_carriers.as_mut().map_or_else(
+            || vec![MolecularCharge::proton(Charge::default())],
+            |c| c.range(charge_range),
+        );
         let losses = std::iter::once(None)
             .chain(neutral_losses.iter().map(Some))
             .collect::<Vec<_>>();
@@ -250,11 +249,10 @@ impl<Mode: MassOutputMode> Fragment<Mode> {
         charge_carriers: &mut Option<CachedCharge>,
         settings: &PossiblePrimaryIons,
     ) -> Vec<Self> {
-        let charges = charge_carriers
-            .as_mut()
-            .map_or(vec![MolecularCharge::proton(Charge::default())], |c| {
-                c.range(settings.1)
-            });
+        let charges = charge_carriers.as_mut().map_or_else(
+            || vec![MolecularCharge::proton(Charge::default())],
+            |c| c.range(settings.1),
+        );
         let losses = std::iter::once(None)
             .chain(settings.0.iter().map(Some))
             .chain(neutral_losses.iter().map(Some))
@@ -336,9 +334,10 @@ impl<Mode: MassOutputMode> Fragment<Mode> {
     ) -> impl Iterator<Item = Self> {
         charge_carriers
             .as_mut()
-            .map_or(vec![MolecularCharge::proton(Charge::default())], |c| {
-                c.range(charge_range)
-            })
+            .map_or_else(
+                || vec![MolecularCharge::proton(Charge::default())],
+                |c| c.range(charge_range),
+            )
             .into_iter()
             .map(move |c| self.with_charge(&c))
     }
@@ -486,7 +485,6 @@ impl Isotope {
                     + Mode::from_mass(system::Mass::new::<system::dalton>(
                         *ISOTOPE_OFFSET * f64::from(amount),
                     ));
-                Some(())
             }
             Self::Specific(el, i) => {
                 *formula = formula.clone()
@@ -494,9 +492,9 @@ impl Isotope {
                         &[(el, Some(i), amount), (el, None, -amount)],
                         &[],
                     )?);
-                Some(())
             }
         }
+        Some(())
     }
 
     /// Subtract a certain amount of this isotope to a formula. It returns None if this isotope is
@@ -512,7 +510,6 @@ impl Isotope {
                     + Mode::from_mass(system::Mass::new::<system::dalton>(
                         *ISOTOPE_OFFSET * -1.0 * f64::from(amount),
                     ));
-                Some(())
             }
             Self::Specific(el, i) => {
                 *formula = formula.clone()
@@ -520,9 +517,9 @@ impl Isotope {
                         &[(el, Some(i), amount), (el, None, -amount)],
                         &[],
                     )?);
-                Some(())
             }
         }
+        Some(())
     }
 }
 

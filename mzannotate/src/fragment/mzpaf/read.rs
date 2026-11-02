@@ -35,7 +35,7 @@ use crate::{
 };
 
 /// The list of canonicalised neutral losses
-pub(super) const MZPAF_CANONICAL_LOSSES: LazyLock<[(MolecularFormula, &'static str); 12]> =
+pub(super) static MZPAF_CANONICAL_LOSSES: LazyLock<[(MolecularFormula, &'static str); 12]> =
     LazyLock::new(|| {
         [
             (molecular_formula!(N 1 H 3), "NH3"),
@@ -1416,8 +1416,7 @@ pub(in crate::fragment) fn parse_neutral_loss<'a, const STRICT: bool>(
         if neutral_losses
             .iter()
             .map(|l| match l {
-                NeutralLoss::Gain(_, f) => f,
-                NeutralLoss::Loss(_, f) => f,
+                NeutralLoss::Gain(_, f) | NeutralLoss::Loss(_, f) => f,
                 NeutralLoss::SideChainLoss(..) => &def,
             })
             .unique()

@@ -320,7 +320,7 @@ pub enum CrossId {
     ChemSpider(usize),
     /// Reference a COMe entry, a database of metalloproteins (10.1186/1472-6807-4-3)
     COMe(Box<str>),
-    /// Enzyme Commission number
+    /// Enzyme Commission number built up of four numbers and a fleg to identify preliminary numbers
     EC(u16, u16, u16, u16, bool),
     /// A gene ontology term
     GO(AccessionCode),
@@ -704,7 +704,11 @@ impl Display for CrossId {
             Self::COMe(a) => write!(f, "COMe:{a}"),
             Self::Deltamass(a) => write!(f, "DeltaMass:{a}"),
             Self::DOI(a, b) => write!(f, "DOI:10.{a}/{b}"),
-            Self::EC(a, b, c, d, p) => write!(f, "EC:{a}.{b}.{c}.{}{d}", if *p { "n" } else { "" }),
+            Self::EC(a, b, c, d, preliminary) => write!(
+                f,
+                "EC:{a}.{b}.{c}.{}{d}",
+                if *preliminary { "n" } else { "" }
+            ),
             Self::Findmod(a) => write!(f, "FindMod:{a}"),
             Self::GO(a) => write!(f, "GO:{a}"),
             Self::MDL(a) => write!(f, "MDL:{a}"),
@@ -727,7 +731,9 @@ impl Space for CrossId {
     fn space(&self) -> UsedSpace {
         match self {
             Self::CAS(a, b, c) => a.space() + b.space() + c.space(),
-            Self::EC(a, b, c, d, p) => a.space() + b.space() + c.space() + d.space() + p.space(),
+            Self::EC(a, b, c, d, preliminary) => {
+                a.space() + b.space() + c.space() + d.space() + preliminary.space()
+            }
             Self::GO(a) => a.space(),
             Self::Mod(a, b, c) => a.space() + b.space() + c.space(),
             Self::DOI(a, b) => a.space() + b.space(),
@@ -770,9 +776,12 @@ impl CrossId {
             Self::COMe(a) => (Some("COMe"), Cow::Borrowed(a)),
             Self::Deltamass(a) => (Some("DeltaMass"), Cow::Owned(a.to_string())),
             Self::DOI(a, b) => (Some("DOI"), Cow::Owned(format!("10.{a}/{b}"))),
-            Self::EC(a, b, c, d, p) => (
+            Self::EC(a, b, c, d, preliminary) => (
                 Some("EC"),
-                Cow::Owned(format!("{a}.{b}.{c}.{}{d}", if *p { "n" } else { "" })),
+                Cow::Owned(format!(
+                    "{a}.{b}.{c}.{}{d}",
+                    if *preliminary { "n" } else { "" }
+                )),
             ),
             Self::Findmod(a) => (Some("FindMod"), Cow::Borrowed(a)),
             Self::GO(a) => (Some("GO"), Cow::Owned(a.to_string())),

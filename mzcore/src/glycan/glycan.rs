@@ -4,6 +4,7 @@ use context_error::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    ParserResult,
     chemistry::{ELEMENT_PARSE_LIST, Element, MassOutputMode, MolecularFormula, Molecule},
     glycan::{GlycanCompositionError, lists::*, monosaccharide::MonoSaccharide},
     helper_functions::{RangeExtension, str_starts_with},
@@ -40,14 +41,13 @@ impl MonoSaccharide {
     /// Parse a monosaccharide from common name or from custom composition, e.g. `{C8H13NO4}`.
     /// In strict mode this gives a warning if the name is not the same as listed in ProForma, e.g.
     /// `Glc` is accepted but gives a warning.
+    /// # Errors
+    /// If the text does not follow the ProForma specification.
     pub fn from_pro_forma<'a, const STRICT: bool>(
         base_context: &Context<'a>,
         line: &'a str,
         range: impl RangeBounds<usize>,
-    ) -> Result<
-        (Self, Vec<BoxedError<'a, GlycanCompositionError>>),
-        Vec<BoxedError<'a, GlycanCompositionError>>,
-    > {
+    ) -> ParserResult<'a, Self, GlycanCompositionError> {
         let index = range.start_index();
         let end = range.end_index_exclusive(line.len());
         let mut errors = Vec::new();
@@ -510,6 +510,9 @@ impl ParseHelper for &str {
     }
 }
 
+/// Parse glycan substitution locations: `Glc1,2,3,4Ac4`, `Gal3/4S`, `Hex1-2,2-3Py`.
+/// # Errors
+/// When a location uses numbers that overflow (>255).
 fn parse_locations<'a>(
     line: &str,
     start: usize,
@@ -983,8 +986,7 @@ pub enum GlycanSubstituentLeavingGroup {
 impl Space for GlycanSubstituentLeavingGroup {
     fn space(&self) -> UsedSpace {
         (match self {
-            Self::Hydrogen => UsedSpace::stack(1),
-            Self::Hydroxy => UsedSpace::stack(1),
+            Self::Hydrogen | Self::Hydroxy => UsedSpace::stack(1),
         })
         .set_total::<Self>()
     }
@@ -1005,7 +1007,7 @@ impl Molecule for GlycanSubstituentLeavingGroup {
 
 impl ParseJson for GlycanSubstituentLeavingGroup {
     fn from_json_value(value: serde_json::Value) -> Result<Self, BoxedError<'static, BasicKind>> {
-        use_serde(value.clone())
+        use_serde(value)
     }
 }
 

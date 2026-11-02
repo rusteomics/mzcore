@@ -229,6 +229,7 @@ impl PeptidoformIon {
     /// When some peptides do not have the same global isotope modifications.
     /// # Errors
     /// If the underlying formatter errors.
+    #[expect(clippy::panic_in_result_fn)]
     pub fn display(
         &self,
         f: &mut impl Write,

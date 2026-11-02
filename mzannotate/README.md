@@ -22,7 +22,7 @@ Handle fragment spectra annotation. Has support for [generating theoretical frag
 ## Changelog
 ### 0.2.0
 
-- Support calculating the fragments as MolecularFormula or directly as mass. See mzcore 0.3.0 for more details.
+- Support calculating the fragments as `MolecularFormula` or directly as mass. See mzcore 0.3.0 for more details.
 - Uses the CV structures from mzcv now.
 - Added isotope pattern matching with additional filtering based on cosine similarity
 - Added internal fragment generation and matching.

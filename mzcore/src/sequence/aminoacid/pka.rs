@@ -268,7 +268,7 @@ impl PKaSource<AminoAcid> for PKaLehninger {
 }
 
 #[cfg(test)]
-#[expect(clippy::float_cmp, clippy::missing_panics_doc)]
+#[expect(clippy::missing_panics_doc)]
 mod tests {
     use super::*;
     use crate::sequence::SimpleModification;

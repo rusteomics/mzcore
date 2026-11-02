@@ -148,7 +148,7 @@ impl AmbiguousMolecule for PeptidoformIonSet {
             .flat_map(|(i, p)| {
                 (p.calculate_masses_inner::<Mode>(crate::sequence::SequencePosition::CTerm, 0, i)
                     + p.get_charge_carriers()
-                        .map(|c| c.calculate_mass::<Mode>())
+                        .map(Molecule::calculate_mass::<Mode>)
                         .unwrap_or_default())
                 .to_vec()
             })

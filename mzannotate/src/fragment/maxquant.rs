@@ -148,13 +148,15 @@ fn parse_intermediate_representation<'a>(
         num_range.start + length..num_range.end,
     )
     .map_err(|mut err| {
-        if err.len() == 1 {
-            err.pop().unwrap()
+        if err.len() == 1
+            && let Some(err) = err.pop()
+        {
+            err
         } else {
             BoxedError::new(
                 BasicKind::Error,
                 "Invalid neutral losses",
-                "Multiple rror occured see underlying errors",
+                "Multiple errors occured see underlying errors",
                 base_context.clone().add_highlight((0, num_range.clone())),
             )
             .add_underlying_errors(err)

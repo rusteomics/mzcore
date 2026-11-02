@@ -70,16 +70,14 @@ impl GlycanFragmention for PositionedGlycanStructure {
         full_formula: &Multi<Mode::Output>,
         attachment: Option<(AminoAcid, SequencePosition)>,
     ) -> Vec<Fragment<Mode>> {
-        let charges_other = charge_carriers
-            .as_mut()
-            .map_or(vec![MolecularCharge::proton(Charge::default())], |c| {
-                c.range(model.glycan.other_charge_range)
-            });
-        let charges_oxonium = charge_carriers
-            .as_mut()
-            .map_or(vec![MolecularCharge::proton(Charge::default())], |c| {
-                c.range(model.glycan.oxonium_charge_range)
-            });
+        let charges_other = charge_carriers.as_mut().map_or_else(
+            || vec![MolecularCharge::proton(Charge::default())],
+            |c| c.range(model.glycan.other_charge_range),
+        );
+        let charges_oxonium = charge_carriers.as_mut().map_or_else(
+            || vec![MolecularCharge::proton(Charge::default())],
+            |c| c.range(model.glycan.oxonium_charge_range),
+        );
         if model.glycan.allow_structural {
             {
                 // Get all B fragments from this node and all its children

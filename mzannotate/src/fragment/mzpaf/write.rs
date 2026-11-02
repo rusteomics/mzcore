@@ -266,7 +266,7 @@ impl<Mode: MassOutputMode> ToMzPAF for Fragment<Mode> {
             match amount {
                 0 => continue,
                 1 => write!(w, "+")?,
-                -1 => write!(w, "+")?,
+                -1 => write!(w, "-")?,
                 n => write!(w, "{n:+}")?,
             }
             write!(w, "{isotope}")?;

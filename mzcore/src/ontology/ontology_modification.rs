@@ -301,6 +301,7 @@ fn compress_rules(rules: &[PlacementRule]) -> Vec<PlacementRule> {
 }
 
 #[test]
+#[allow(clippy::missing_panics_doc)]
 fn compress() {
     let rules = compress_rules(&[
         PlacementRule::AminoAcid(

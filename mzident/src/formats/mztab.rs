@@ -955,7 +955,7 @@ fn parse_metadata<'a>(
                 metadata.protein_search_engines.push(term);
             }
             "description" => {
-                metadata.description = line[fields[2].clone()].replace('␤', "\n").into()
+                metadata.description = line[fields[2].clone()].replace('␤', "\n").into();
             }
             "title" => metadata.title = line[fields[2].clone()].replace('␤', "\n").into(),
             "mztab-id" => metadata.id = line[fields[2].clone()].replace('␤', "\n").into(),

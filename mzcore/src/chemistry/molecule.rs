@@ -248,17 +248,17 @@ impl std::ops::Mul<i32> for MassOutput {
 
     fn mul(self, rhs: i32) -> Self::Output {
         Self {
-            mass: self.mass * rhs as f64,
+            mass: self.mass * f64::from(rhs),
             charge: self.charge * rhs as isize,
             labels: self.labels,
         }
     }
 }
 
-impl std::ops::Add<MassOutput> for MassOutput {
+impl std::ops::Add<Self> for MassOutput {
     type Output = Self;
 
-    fn add(self, rhs: MassOutput) -> Self::Output {
+    fn add(self, rhs: Self) -> Self::Output {
         let mut labels = self.labels;
         labels.extend_from_slice(&rhs.labels);
         Self {
@@ -269,10 +269,10 @@ impl std::ops::Add<MassOutput> for MassOutput {
     }
 }
 
-impl std::ops::Sub<MassOutput> for MassOutput {
+impl std::ops::Sub<Self> for MassOutput {
     type Output = Self;
 
-    fn sub(self, rhs: MassOutput) -> Self::Output {
+    fn sub(self, rhs: Self) -> Self::Output {
         Self {
             mass: self.mass - rhs.mass,
             charge: self.charge - rhs.charge,
@@ -282,7 +282,7 @@ impl std::ops::Sub<MassOutput> for MassOutput {
 }
 
 impl std::ops::Neg for MassOutput {
-    type Output = MassOutput;
+    type Output = Self;
 
     fn neg(self) -> Self::Output {
         Self {
@@ -293,8 +293,8 @@ impl std::ops::Neg for MassOutput {
     }
 }
 
-impl std::iter::Sum<MassOutput> for MassOutput {
-    fn sum<I: Iterator<Item = MassOutput>>(iter: I) -> Self {
+impl std::iter::Sum<Self> for MassOutput {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
         iter.fold(Self::default(), |acc, i| acc + i)
     }
 }

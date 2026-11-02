@@ -32,16 +32,14 @@ pub(crate) fn theoretical_fragments<Mode: MassOutputMode>(
         MonoSaccharide::composition_options(composition, model.glycan.compositional_range);
 
     // Generate compositional B and Y ions
-    let charges_other = charge_carriers
-        .as_mut()
-        .map_or(vec![MolecularCharge::proton(Charge::default())], |c| {
-            c.range(model.glycan.other_charge_range)
-        });
-    let charges_oxonium = charge_carriers
-        .as_mut()
-        .map_or(vec![MolecularCharge::proton(Charge::default())], |c| {
-            c.range(model.glycan.oxonium_charge_range)
-        });
+    let charges_other = charge_carriers.as_mut().map_or_else(
+        || vec![MolecularCharge::proton(Charge::default())],
+        |c| c.range(model.glycan.other_charge_range),
+    );
+    let charges_oxonium = charge_carriers.as_mut().map_or_else(
+        || vec![MolecularCharge::proton(Charge::default())],
+        |c| c.range(model.glycan.oxonium_charge_range),
+    );
     for fragment_composition in compositions {
         let formula = fragment_composition
             .iter()

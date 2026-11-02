@@ -345,6 +345,7 @@ impl Ontologies {
     }
 
     /// Find the given index in this ontology.
+    #[allow(clippy::trivially_copy_pass_by_ref)]
     pub fn get_by_index(
         &self,
         ontology: Ontology,

@@ -459,6 +459,7 @@ simple_space!(crate::system::OrderedTime);
 
 #[ignore = "Only run when interested in the space taken up by GNOme"]
 #[test]
+#[expect(clippy::missing_panics_doc)]
 fn gnome_space() {
     use mzcv::CVStructure;
     let space = crate::ontology::STATIC_ONTOLOGIES

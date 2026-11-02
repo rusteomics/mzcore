@@ -166,7 +166,7 @@ impl<Context> bincode::Decode<Context> for SimpleModificationInner {
 
 impl Molecule for SimpleModificationInner {
     /// Get the molecular formula for this modification.
-    fn calculate_mass_inner<Mode: MassOutputMode + ?Sized>(
+    fn calculate_mass_inner<Mode: MassOutputMode>(
         &self,
         position: SequencePosition,
         peptidoform_index: usize,
@@ -226,11 +226,10 @@ impl SimpleModificationInner {
                             option
                                 .iter()
                                 .map(|i| {
-                                    (i.0.calculate_mass_inner::<Mode>(
+                                    i.0.calculate_mass_inner::<Mode>(
                                         sequence_index,
                                         peptidoform_index,
-                                    ) * i.1 as i32)
-                                        .into()
+                                    ) * i.1 as i32
                                 })
                                 .sum::<Mode::Output>()
                                 .with_label(AmbiguousLabel::GlycanFragmentComposition(option)),
@@ -242,11 +241,8 @@ impl SimpleModificationInner {
                         monosaccharides
                             .iter()
                             .map(|i| {
-                                (i.0.calculate_mass_inner::<Mode>(
-                                    sequence_index,
-                                    peptidoform_index,
-                                ) * i.1 as i32)
-                                    .into()
+                                i.0.calculate_mass_inner::<Mode>(sequence_index, peptidoform_index)
+                                    * i.1 as i32
                             })
                             .sum(),
                     );
