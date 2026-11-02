@@ -71,12 +71,12 @@ impl MonoSaccharide {
                                 let _ = acc.write_char(',');
                             }
                             let _ = match l {
-                                GlycanSubstituentLocation::Single(None) => acc.write_char('?'),
-                                GlycanSubstituentLocation::Single(Some(l)) => {
+                                GlycanSubstituentLocation::Single(None, _) => acc.write_char('?'),
+                                GlycanSubstituentLocation::Single(Some(l), _) => {
                                     write!(&mut acc, "{l}")
                                 }
-                                GlycanSubstituentLocation::Double(None) => acc.write_str("?-?"),
-                                GlycanSubstituentLocation::Double(Some((a, b))) => {
+                                GlycanSubstituentLocation::Double(None, ..) => acc.write_str("?-?"),
+                                GlycanSubstituentLocation::Double(Some((a, b)), ..) => {
                                     write!(&mut acc, "{a}-{b}")
                                 }
                             };
@@ -100,14 +100,15 @@ impl MonoSaccharide {
                 if let Some(p) = list
                     .iter()
                     .position(|e| {
-                        if let GlycanSubstituentLocation::Single(Some(l)) = e {
+                        if let GlycanSubstituentLocation::Single(Some(l), _) = e {
                             l.get() == *p
                         } else {
                             false
                         }
                     })
                     .or_else(|| {
-                        list.iter().position(|l| *l == GlycanSubstituentLocation::Single(None))
+                        list.iter()
+                            .position(|l| matches!(*l, GlycanSubstituentLocation::Single(None, _)))
                     })
                 {
                     list.remove(p);
