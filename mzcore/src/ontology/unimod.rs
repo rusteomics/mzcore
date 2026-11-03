@@ -81,13 +81,10 @@ impl CVSource for Unimod {
                 e.to_string(),
             )]
         })?;
-        let document = Document::parse_with_options(
-            &buf,
-            ParsingOptions {
-                allow_dtd: true,
-                ..Default::default()
-            },
-        )
+        let document = Document::parse_with_options(&buf, ParsingOptions {
+            allow_dtd: true,
+            ..Default::default()
+        })
         .map_err(|err| {
             vec![BoxedError::small(
                 CVError::FileCouldNotBeParsed,

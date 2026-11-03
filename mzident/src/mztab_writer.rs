@@ -1047,8 +1047,8 @@ fn write_mod(
             .iter()
             .flat_map(|r| &r.0)
             .flat_map(|r| match r {
-                PlacementRule::AminoAcid(aa, _, _) => aa.iter().map(ToString::to_string).collect(),
-                PlacementRule::PsiModification(i, _, _) => vec![format!("MOD:{i}")],
+                PlacementRule::AminoAcid(aa, ..) => aa.iter().map(ToString::to_string).collect(),
+                PlacementRule::PsiModification(i, ..) => vec![format!("MOD:{i}")],
                 PlacementRule::Position(term, _) => vec![term.to_string()],
             })
             .unique()

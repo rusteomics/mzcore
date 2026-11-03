@@ -1337,38 +1337,46 @@ macro_rules! accession_code {
             assert!(BYTES[0] != 0);
             assert!(BYTES.is_ascii());
             match BYTES {
-                [a, b, c, d, e, f, g, h] => $crate::AccessionCode::Alphanumeric(
-                    std::num::NonZeroU8::new(*a).unwrap(),
-                    [*b, *c, *d, *e, *f, *g, *h],
-                ),
-                [a, b, c, d, e, f, g] => $crate::AccessionCode::Alphanumeric(
-                    std::num::NonZeroU8::new(*a).unwrap(),
-                    [*b, *c, *d, *e, *f, *g, 0x20],
-                ),
-                [a, b, c, d, e, f] => $crate::AccessionCode::Alphanumeric(
-                    std::num::NonZeroU8::new(*a).unwrap(),
-                    [*b, *c, *d, *e, *f, 0x20, 0x20],
-                ),
-                [a, b, c, d, e] => $crate::AccessionCode::Alphanumeric(
-                    std::num::NonZeroU8::new(*a).unwrap(),
-                    [*b, *c, *d, *e, 0x20, 0x20, 0x20],
-                ),
-                [a, b, c, d] => $crate::AccessionCode::Alphanumeric(
-                    std::num::NonZeroU8::new(*a).unwrap(),
-                    [*b, *c, *d, 0x20, 0x20, 0x20, 0x20],
-                ),
-                [a, b, c] => $crate::AccessionCode::Alphanumeric(
-                    std::num::NonZeroU8::new(*a).unwrap(),
-                    [*b, *c, 0x20, 0x20, 0x20, 0x20, 0x20],
-                ),
-                [a, b] => $crate::AccessionCode::Alphanumeric(
-                    std::num::NonZeroU8::new(*a).unwrap(),
-                    [*b, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20],
-                ),
-                [a] => $crate::AccessionCode::Alphanumeric(
-                    std::num::NonZeroU8::new(*a).unwrap(),
-                    [0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20],
-                ),
+                [a, b, c, d, e, f, g, h] => {
+                    $crate::AccessionCode::Alphanumeric(std::num::NonZeroU8::new(*a).unwrap(), [
+                        *b, *c, *d, *e, *f, *g, *h,
+                    ])
+                }
+                [a, b, c, d, e, f, g] => {
+                    $crate::AccessionCode::Alphanumeric(std::num::NonZeroU8::new(*a).unwrap(), [
+                        *b, *c, *d, *e, *f, *g, 0x20,
+                    ])
+                }
+                [a, b, c, d, e, f] => {
+                    $crate::AccessionCode::Alphanumeric(std::num::NonZeroU8::new(*a).unwrap(), [
+                        *b, *c, *d, *e, *f, 0x20, 0x20,
+                    ])
+                }
+                [a, b, c, d, e] => {
+                    $crate::AccessionCode::Alphanumeric(std::num::NonZeroU8::new(*a).unwrap(), [
+                        *b, *c, *d, *e, 0x20, 0x20, 0x20,
+                    ])
+                }
+                [a, b, c, d] => {
+                    $crate::AccessionCode::Alphanumeric(std::num::NonZeroU8::new(*a).unwrap(), [
+                        *b, *c, *d, 0x20, 0x20, 0x20, 0x20,
+                    ])
+                }
+                [a, b, c] => {
+                    $crate::AccessionCode::Alphanumeric(std::num::NonZeroU8::new(*a).unwrap(), [
+                        *b, *c, 0x20, 0x20, 0x20, 0x20, 0x20,
+                    ])
+                }
+                [a, b] => {
+                    $crate::AccessionCode::Alphanumeric(std::num::NonZeroU8::new(*a).unwrap(), [
+                        *b, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
+                    ])
+                }
+                [a] => {
+                    $crate::AccessionCode::Alphanumeric(std::num::NonZeroU8::new(*a).unwrap(), [
+                        0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
+                    ])
+                }
                 _ => panic!(concat!(
                     "Cannot convert ",
                     stringify!($acc),

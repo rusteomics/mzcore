@@ -136,17 +136,13 @@ impl ParseJson for ResiduePosition {
 
 impl std::fmt::Display for ResiduePosition {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Anywhere => "Anywhere",
-                Self::AnyNTerm => "AnyNTerm",
-                Self::AnyCTerm => "AnyCTerm",
-                Self::ProteinNTerm => "ProteinNTerm",
-                Self::ProteinCTerm => "ProteinCTerm",
-            }
-        )
+        write!(f, "{}", match self {
+            Self::Anywhere => "Anywhere",
+            Self::AnyNTerm => "AnyNTerm",
+            Self::AnyCTerm => "AnyCTerm",
+            Self::ProteinNTerm => "ProteinNTerm",
+            Self::ProteinCTerm => "ProteinCTerm",
+        })
     }
 }
 
@@ -201,14 +197,10 @@ impl ParseJson for ModificationPosition {
 
 impl std::fmt::Display for ModificationPosition {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Sidechain => "Sidechain",
-                Self::Terminal => "Terminal",
-            }
-        )
+        write!(f, "{}", match self {
+            Self::Sidechain => "Sidechain",
+            Self::Terminal => "Terminal",
+        })
     }
 }
 
@@ -473,6 +465,7 @@ impl RulePosition for ResiduePosition {
             Self::ProteinCTerm => position == Self::ProteinCTerm,
         }
     }
+
     fn modification_is_possible(_rule: ModificationPosition, _position: Self) -> bool {
         true
     }
@@ -491,6 +484,7 @@ impl RulePosition for SequencePosition {
             }
         }
     }
+
     fn modification_is_possible(rule: ModificationPosition, position: Self) -> bool {
         match rule {
             ModificationPosition::Sidechain => matches!(position, Self::Index(_, _)),

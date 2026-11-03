@@ -507,20 +507,17 @@ mod tests {
             None,
         )
         .collect();
-        assert_eq!(
-            &sets,
-            &[
-                Peptidoform::pro_forma("GA", &ontologies)
-                    .unwrap()
-                    .0
-                    .into_simple_linear()
-                    .unwrap(),
-                Peptidoform::pro_forma("Q", &ontologies)
-                    .unwrap()
-                    .0
-                    .into_simple_linear()
-                    .unwrap(),
-            ]
-        );
+        assert_eq!(&sets, &[
+            Peptidoform::pro_forma("GA", &ontologies)
+                .unwrap()
+                .0
+                .into_simple_linear()
+                .unwrap(),
+            Peptidoform::pro_forma("Q", &ontologies)
+                .unwrap()
+                .0
+                .into_simple_linear()
+                .unwrap(),
+        ]);
     }
 }
