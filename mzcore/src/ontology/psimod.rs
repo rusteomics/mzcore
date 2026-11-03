@@ -19,8 +19,8 @@ use crate::{
         ontology_modification::{ModData, OntologyModification},
     },
     sequence::{
-        LinkerSpecificity, ModificationId, PlacementRule, Position, SimpleModification,
-        SimpleModificationInner,
+        LinkerSpecificity, ModificationId, ModificationPosition, PlacementRule, ResiduePosition,
+        SimpleModification, SimpleModificationInner,
     },
 };
 
@@ -331,11 +331,11 @@ impl CVSource for PsiMod {
                     (Some("TermSpec"), value) => {
                         let v = value.trim_start_matches('\"').trim_end_matches('\"');
                         if v == "N-term" {
-                            term = Some(Position::AnyNTerm);
+                            term = Some(ResiduePosition::AnyNTerm);
                         } else if v == "C-term" {
-                            term = Some(Position::AnyCTerm);
+                            term = Some(ResiduePosition::AnyCTerm);
                         } else if v == "none" {
-                            term = Some(Position::Anywhere);
+                            term = Some(ResiduePosition::Anywhere);
                         } else {
                             combine_error(
                                 &mut errors,
@@ -370,7 +370,18 @@ impl CVSource for PsiMod {
                         }
                     }
                 } else if let Some(term) = term {
-                    rules.push((vec![PlacementRule::Position(term)], Vec::new(), Vec::new()));
+                    rules.push((
+                        vec![PlacementRule::Position(
+                            term,
+                            if term == ResiduePosition::Anywhere {
+                                ModificationPosition::Sidechain
+                            } else {
+                                ModificationPosition::Terminal
+                            },
+                        )],
+                        Vec::new(),
+                        Vec::new(),
+                    ));
                 }
                 modification.data = ModData::Mod {
                     specificities: rules,
@@ -425,18 +436,33 @@ impl CVSource for PsiMod {
 /// If this is not a valid rule
 fn parse_rule(
     rule: &str,
-    term: Option<Position>,
+    term: Option<ResiduePosition>,
 ) -> Result<PlacementRule, BoxedError<'static, CVError>> {
     if rule.len() == 1 {
         if rule == "X" {
             Ok(term.map_or_else(
-                || PlacementRule::Position(Position::Anywhere),
-                PlacementRule::Position,
+                || {
+                    PlacementRule::Position(
+                        ResiduePosition::Anywhere,
+                        ModificationPosition::Sidechain,
+                    )
+                },
+                |p| {
+                    PlacementRule::Position(
+                        p,
+                        if p == ResiduePosition::Anywhere {
+                            ModificationPosition::Sidechain
+                        } else {
+                            ModificationPosition::Terminal
+                        },
+                    )
+                },
             ))
         } else if let Ok(aa) = rule.try_into() {
             Ok(PlacementRule::AminoAcid(
                 vec![aa].into(),
-                term.unwrap_or(Position::Anywhere),
+                term.unwrap_or(ResiduePosition::Anywhere),
+                ModificationPosition::Sidechain,
             ))
         } else {
             Err(BoxedError::new(
@@ -457,9 +483,15 @@ fn parse_rule(
                 Context::default().lines(0, rule.to_string()),
             ))
         } else if let Ok(id) = id.1.parse() {
+            let p = term.unwrap_or(ResiduePosition::Anywhere);
             Ok(PlacementRule::PsiModification(
                 id,
-                term.unwrap_or(Position::Anywhere),
+                p,
+                if p == ResiduePosition::Anywhere {
+                    ModificationPosition::Sidechain
+                } else {
+                    ModificationPosition::Terminal
+                },
             ))
         } else {
             Err(BoxedError::new(

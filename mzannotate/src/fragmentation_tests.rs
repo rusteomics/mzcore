@@ -9,7 +9,8 @@ use mzcore::{
     ontology::{Ontologies, Ontology},
     prelude::*,
     sequence::{
-        LinkerSpecificity, ModificationId, PlacementRule, Position, SimpleModificationInner,
+        LinkerSpecificity, ModificationId, ModificationPosition, PlacementRule, ResiduePosition,
+        SimpleModificationInner,
     },
     system::{self, MassOverCharge, Ratio, isize::Charge},
 };
@@ -635,7 +636,8 @@ fn custom_database() -> Ontologies {
             specificities: vec![LinkerSpecificity::Symmetric {
                 rules: vec![PlacementRule::AminoAcid(
                     vec![AminoAcid::Lysine].into(),
-                    Position::Anywhere,
+                    ResiduePosition::Anywhere,
+                    ModificationPosition::Sidechain,
                 )],
                 stubs: vec![(
                     molecular_formula!(C 3 O 2 H 1 N -1),
@@ -660,7 +662,8 @@ fn custom_database() -> Ontologies {
             specificities: vec![LinkerSpecificity::Symmetric {
                 rules: vec![PlacementRule::AminoAcid(
                     vec![AminoAcid::Cysteine].into(),
-                    Position::Anywhere,
+                    ResiduePosition::Anywhere,
+                    ModificationPosition::Sidechain,
                 )],
                 stubs: vec![(molecular_formula!(H - 1), molecular_formula!(H - 1))],
                 neutral_losses: Vec::new(),

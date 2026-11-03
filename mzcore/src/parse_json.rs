@@ -291,49 +291,14 @@ impl ParseJson for AccessionCode {
                     Context::default().lines(0, n),
                 )
             }),
-            Value::Object(map) => map.get("Numeric").map_or_else(
-                || {
-                    map.get("Alphanumeric").map_or_else(
-                        || {
-                            Err(BoxedError::new(
-                                BasicKind::Error,
-                                "Invalid ModificationID",
-                                "The 'id' can only be 'Numeric' or 'Alphanumeric'",
-                                Context::default().lines(
-                                    0,
-                                    map.iter().map(|(k, v)| format!("\"{k}\": {v}")).join(","),
-                                ),
-                            ))
-                        },
-                        |n| {
-                            Self::from_str(&n.to_string()).map_err(|err| {
-                                BoxedError::new(
-                                    BasicKind::Error,
-                                    "Invalid alphanumeric ModificationID",
-                                    err.to_string(),
-                                    Context::default().lines(0, n.to_string()),
-                                )
-                            })
-                        },
-                    )
-                },
-                |n| {
-                    u32::from_json_value(n.clone()).map_or_else(
-                        |_| {
-                            Err(BoxedError::new(
-                                BasicKind::Error,
-                                "Invalid numeric ModificationID",
-                                format!(
-                                    "The id has to be a positive integer within 0 to {}",
-                                    u32::MAX
-                                ),
-                                Context::default().lines(0, n.to_string()),
-                            ))
-                        },
-                        |n| Ok(Self::Numeric(n)),
-                    )
-                },
-            ),
+            map @ Value::Object(_) => use_serde(map.clone()).map_err(|err| {
+                BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid ModificationID",
+                    err.to_string(),
+                    Context::default().lines(0, map.to_string()),
+                )
+            }),
             value => Err(BoxedError::new(
                 BasicKind::Error,
                 "Invalid ModificationID",

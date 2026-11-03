@@ -31,8 +31,8 @@ use crate::{
     quantities::Multi,
     sequence::{
         AminoAcid, CrossLinkName, CrossLinkSide, Linked, LinkerSpecificity, MUPSettings,
-        Peptidoform, PlacementRule, Position, SequenceElement, SequencePosition,
-        SimpleModification, SimpleModificationInner,
+        ModificationPosition, Peptidoform, PlacementRule, ResiduePosition, SequenceElement,
+        SequencePosition, SimpleModification, SimpleModificationInner,
     },
     space::{Space, UsedSpace},
     system::OrderedMass,
@@ -377,12 +377,19 @@ impl TryFrom<(Option<Box<str>>, Box<str>)> for CrossId {
                         let r = if rule == "CYS2" || rule == "CYS1" {
                             PlacementRule::AminoAcid(
                                 vec![AminoAcid::Cysteine].into(),
-                                Position::Anywhere,
+                                ResiduePosition::Anywhere,
+                                ModificationPosition::Sidechain,
                             )
                         } else if rule == "N-term" {
-                            PlacementRule::Position(Position::AnyNTerm)
+                            PlacementRule::Position(
+                                ResiduePosition::AnyNTerm,
+                                ModificationPosition::Terminal,
+                            )
                         } else if rule == "C-term" {
-                            PlacementRule::Position(Position::AnyCTerm)
+                            PlacementRule::Position(
+                                ResiduePosition::AnyCTerm,
+                                ModificationPosition::Terminal,
+                            )
                         } else {
                             let loc = rule
                                 .chars()
@@ -396,7 +403,11 @@ impl TryFrom<(Option<Box<str>>, Box<str>)> for CrossId {
                                         Context::default().lines(0, value.1.to_string()),
                                     )
                                 })?;
-                            PlacementRule::AminoAcid(loc, Position::Anywhere)
+                            PlacementRule::AminoAcid(
+                                loc,
+                                ResiduePosition::Anywhere,
+                                ModificationPosition::Sidechain,
+                            )
                         };
 
                         Ok((v, r))
@@ -412,7 +423,15 @@ impl TryFrom<(Option<Box<str>>, Box<str>)> for CrossId {
                             Context::default().lines(0, value.1.to_string()),
                         )
                     })
-                    .map(|v| (v, PlacementRule::Position(Position::Anywhere)))
+                    .map(|v| {
+                        (
+                            v,
+                            PlacementRule::Position(
+                                ResiduePosition::Anywhere,
+                                ModificationPosition::Sidechain,
+                            ),
+                        )
+                    })
             }
         };
 
@@ -847,7 +866,16 @@ impl CrossId {
 impl ParseJson for CrossId {
     fn from_json_value(value: Value) -> Result<Self, BoxedError<'static, BasicKind>> {
         match value {
-            value @ Value::Object(_) => use_serde(value),
+            value @ Value::Object(_) => use_serde(value.clone()).or_else(|err| {
+                value
+                    .get("Mod")
+                    .ok_or(err.clone())
+                    .and_then(|p| {
+                        <(Ontology, AccessionCode, PlacementRule)>::from_json_value(p.clone())
+                            .map(|(a, b, c)| Self::Mod(a, b, c))
+                    })
+                    .map_err(|_| err)
+            }),
             ref arr @ Value::Array(ref value) => {
                 if value.len() == 2 {
                     Self::try_from((

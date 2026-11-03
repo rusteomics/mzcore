@@ -4,7 +4,9 @@ use context_error::{self as _, BasicKind, BoxedError, CreateError};
 use mzcore::{
     chemistry::{Molecule, OutputMolecularFormula},
     ontology::*,
-    sequence::{CrossId, PlacementRule, Position, SimpleModificationInner},
+    sequence::{
+        CrossId, ModificationPosition, PlacementRule, ResiduePosition, SimpleModificationInner,
+    },
 };
 use mzcv::CVIndex;
 
@@ -191,13 +193,19 @@ fn validate_linking(
                                 && !id.cross_ids.contains(&CrossId::Mod(
                                     Ontology::Psimod,
                                     id.id(),
-                                    PlacementRule::Position(Position::Anywhere),
+                                    PlacementRule::Position(
+                                        ResiduePosition::Anywhere,
+                                        ModificationPosition::Sidechain,
+                                    ),
                                 ))
                             {
                                 id.cross_ids.push(CrossId::Mod(
                                     Ontology::Psimod,
                                     id.id(),
-                                    PlacementRule::Position(Position::Anywhere),
+                                    PlacementRule::Position(
+                                        ResiduePosition::Anywhere,
+                                        ModificationPosition::Sidechain,
+                                    ),
                                 ));
                             }
                         }
@@ -301,7 +309,7 @@ fn valid_link(
             ),
         );
     }
-    if *rule != PlacementRule::Position(Position::Anywhere)
+    if *rule != PlacementRule::Position(ResiduePosition::Anywhere, ModificationPosition::Sidechain)
         && let SimpleModificationInner::Database { specificities, .. } = two
         && !specificities.iter().any(|s| s.0.iter().any(|r| rule.is_subset(r)))
     {

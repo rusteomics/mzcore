@@ -303,24 +303,32 @@ fn compress_rules(rules: &[PlacementRule]) -> Vec<PlacementRule> {
 #[test]
 #[allow(clippy::missing_panics_doc)]
 fn compress() {
+    use crate::sequence::{AminoAcid, ModificationPosition, ResiduePosition};
     let rules = compress_rules(&[
         PlacementRule::AminoAcid(
-            vec![crate::sequence::AminoAcid::Serine].into(),
-            crate::sequence::Position::Anywhere,
+            vec![AminoAcid::Serine].into(),
+            ResiduePosition::Anywhere,
+            ModificationPosition::Sidechain,
         ),
         PlacementRule::AminoAcid(
-            vec![crate::sequence::AminoAcid::Threonine].into(),
-            crate::sequence::Position::Anywhere,
+            vec![AminoAcid::Threonine].into(),
+            ResiduePosition::Anywhere,
+            ModificationPosition::Sidechain,
         ),
         PlacementRule::AminoAcid(
-            vec![crate::sequence::AminoAcid::Tyrosine].into(),
-            crate::sequence::Position::Anywhere,
+            vec![AminoAcid::Tyrosine].into(),
+            ResiduePosition::Anywhere,
+            ModificationPosition::Sidechain,
         ),
         PlacementRule::AminoAcid(
-            vec![crate::sequence::AminoAcid::Lysine].into(),
-            crate::sequence::Position::Anywhere,
+            vec![AminoAcid::Lysine].into(),
+            ResiduePosition::Anywhere,
+            ModificationPosition::Sidechain,
         ),
-        PlacementRule::Position(crate::sequence::Position::ProteinNTerm),
+        PlacementRule::Position(
+            ResiduePosition::ProteinNTerm,
+            ModificationPosition::Terminal,
+        ),
     ]);
     assert_eq!(rules.len(), 2);
 }

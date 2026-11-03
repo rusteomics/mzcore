@@ -458,12 +458,12 @@ impl SimpleModificationInner {
                 .iter()
                 .flat_map(|set| &set.0)
                 .map(|rule| match rule {
-                    PlacementRule::AminoAcid(aa, pos) => {
-                        format!("{}@{pos}", aa.iter().join(""))
+                    PlacementRule::AminoAcid(aa, pos, mpos) => {
+                        format!("{}@{mpos}@{pos}", aa.iter().join(""))
                     }
-                    PlacementRule::Position(pos) => pos.to_string(),
-                    PlacementRule::PsiModification(index, pos) => {
-                        format!("MOD:{index:07}@{pos}")
+                    PlacementRule::Position(pos, mpos) => format!("{mpos}@{pos}"),
+                    PlacementRule::PsiModification(index, pos, mpos) => {
+                        format!("MOD:{index:07}@{mpos}@{pos}")
                     }
                 })
                 .collect_vec(),
@@ -477,12 +477,12 @@ impl SimpleModificationInner {
                     } => rules_a.iter().cloned().chain(rules_b.iter().cloned()).collect_vec(),
                 })
                 .map(|rule| match rule {
-                    PlacementRule::AminoAcid(aa, pos) => {
-                        format!("{}@{pos}", aa.iter().join(""))
+                    PlacementRule::AminoAcid(aa, pos, mpos) => {
+                        format!("{}@{mpos}@{pos}", aa.iter().join(""))
                     }
-                    PlacementRule::Position(pos) => pos.to_string(),
-                    PlacementRule::PsiModification(index, pos) => {
-                        format!("MOD:{index:07}@{pos}")
+                    PlacementRule::Position(pos, mpos) => format!("{mpos}@{pos}"),
+                    PlacementRule::PsiModification(index, pos, mpos) => {
+                        format!("MOD:{index:07}@{mpos}@{pos}")
                     }
                 })
                 .collect_vec(),

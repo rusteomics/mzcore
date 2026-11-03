@@ -1035,6 +1035,7 @@ impl<W: Write, State: CanWriteProteins> MzTabWriter<W, State> {
 /// Write a modification in mzTab format.
 /// # Errors
 /// If the writer errors.
+// TODO: Double check if the ModificationPosition really cannot be stroed in some way
 fn write_mod(
     mut w: impl Write,
     prefix: &str,
@@ -1046,9 +1047,9 @@ fn write_mod(
             .iter()
             .flat_map(|r| &r.0)
             .flat_map(|r| match r {
-                PlacementRule::AminoAcid(aa, _) => aa.iter().map(ToString::to_string).collect(),
-                PlacementRule::PsiModification(i, _) => vec![format!("MOD:{i}")],
-                PlacementRule::Position(term) => vec![term.to_string()],
+                PlacementRule::AminoAcid(aa, _, _) => aa.iter().map(ToString::to_string).collect(),
+                PlacementRule::PsiModification(i, _, _) => vec![format!("MOD:{i}")],
+                PlacementRule::Position(term, _) => vec![term.to_string()],
             })
             .unique()
             .join(", ");
@@ -1059,9 +1060,9 @@ fn write_mod(
             .iter()
             .flat_map(|r| &r.0)
             .map(|r| match r {
-                PlacementRule::AminoAcid(_, pos)
-                | PlacementRule::PsiModification(_, pos)
-                | PlacementRule::Position(pos) => pos.to_string(),
+                PlacementRule::AminoAcid(_, pos, _)
+                | PlacementRule::PsiModification(_, pos, _)
+                | PlacementRule::Position(pos, _) => pos.to_string(),
             })
             .unique()
             .join(", ");

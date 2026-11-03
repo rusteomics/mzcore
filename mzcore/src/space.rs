@@ -14,7 +14,7 @@ use crate::{
     },
     ontology::Ontology,
     prelude::{AminoAcid, Element},
-    sequence::{GnoSubsumption, MassTag, Position, SimpleModificationInner},
+    sequence::{GnoSubsumption, MassTag, ResiduePosition, SimpleModificationInner},
 };
 
 /// Query the used amount of space at runtime
@@ -436,7 +436,8 @@ simple_space!(PentoseIsomer);
 simple_space!(HexoseIsomer);
 simple_space!(HeptoseIsomer);
 simple_space!(NonoseIsomer);
-simple_space!(Position);
+simple_space!(ResiduePosition);
+simple_space!(crate::sequence::ModificationPosition);
 simple_space!(Ontology);
 simple_space!(GnoSubsumption);
 simple_space!(MassTag);

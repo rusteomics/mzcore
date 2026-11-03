@@ -10,8 +10,8 @@ use crate::{
     ontology::{Ontologies, Ontology},
     quantities::{Tolerance, WithinTolerance},
     sequence::{
-        AminoAcid, GnoComposition, Modification, Position, SequencePosition, SimpleModification,
-        SimpleModificationInner,
+        AminoAcid, GnoComposition, Modification, ResiduePosition, SequencePosition,
+        SimpleModification, SimpleModificationInner,
     },
     system::{Mass, Ratio, ratio::ppm},
 };
@@ -26,7 +26,7 @@ use crate::{
 pub fn modification_search_mass<'a>(
     mass: Mass,
     tolerance: Tolerance<Mass>,
-    positions: Option<&'a [(Vec<AminoAcid>, Position)]>,
+    positions: Option<&'a [(Vec<AminoAcid>, ResiduePosition)]>,
     mass_mode: MassMode,
     ontologies: &'a Ontologies,
 ) -> impl Iterator<Item = SimpleModification> + 'a {
@@ -219,63 +219,63 @@ impl<'ontologies> PeptideModificationSearch<'ontologies> {
             c_term: bool,
             aminoacid: Option<AminoAcid>,
             in_place: &SimpleModification,
-        ) -> Option<(SimpleModification, Position)> {
+        ) -> Option<(SimpleModification, ResiduePosition)> {
             if !settings.allow_terminal_redefinition || (!n_term && !c_term) {
                 settings
                     .find_replacement(SequencePosition::Index(1, 3), aminoacid, in_place)
-                    .map(|r| (r, Position::Anywhere))
+                    .map(|r| (r, ResiduePosition::Anywhere))
             } else if n_term && c_term {
                 settings
                     .find_replacement(SequencePosition::Index(1, 3), aminoacid, in_place)
-                    .map(|r| (r, Position::Anywhere))
+                    .map(|r| (r, ResiduePosition::Anywhere))
                     .or_else(|| {
                         settings
                             .find_replacement(SequencePosition::Index(0, 3), aminoacid, in_place)
-                            .map(|r| (r, Position::Anywhere))
+                            .map(|r| (r, ResiduePosition::Anywhere))
                     })
                     .or_else(|| {
                         settings
                             .find_replacement(SequencePosition::Index(2, 3), aminoacid, in_place)
-                            .map(|r| (r, Position::Anywhere))
+                            .map(|r| (r, ResiduePosition::Anywhere))
                     })
                     .or_else(|| {
                         settings
                             .find_replacement(SequencePosition::NTerm, aminoacid, in_place)
-                            .map(|r| (r, Position::AnyNTerm))
+                            .map(|r| (r, ResiduePosition::AnyNTerm))
                     })
                     .or_else(|| {
                         settings
                             .find_replacement(SequencePosition::CTerm, aminoacid, in_place)
-                            .map(|r| (r, Position::AnyCTerm))
+                            .map(|r| (r, ResiduePosition::AnyCTerm))
                     })
             } else if n_term {
                 settings
                     .find_replacement(SequencePosition::Index(1, 3), aminoacid, in_place)
-                    .map(|r| (r, Position::Anywhere))
+                    .map(|r| (r, ResiduePosition::Anywhere))
                     .or_else(|| {
                         settings
                             .find_replacement(SequencePosition::Index(0, 3), aminoacid, in_place)
-                            .map(|r| (r, Position::Anywhere))
+                            .map(|r| (r, ResiduePosition::Anywhere))
                     })
                     .or_else(|| {
                         settings
                             .find_replacement(SequencePosition::NTerm, aminoacid, in_place)
-                            .map(|r| (r, Position::AnyNTerm))
+                            .map(|r| (r, ResiduePosition::AnyNTerm))
                     })
             } else {
                 // The case when c_term
                 settings
                     .find_replacement(SequencePosition::Index(1, 3), aminoacid, in_place)
-                    .map(|r| (r, Position::Anywhere))
+                    .map(|r| (r, ResiduePosition::Anywhere))
                     .or_else(|| {
                         settings
                             .find_replacement(SequencePosition::Index(2, 3), aminoacid, in_place)
-                            .map(|r| (r, Position::Anywhere))
+                            .map(|r| (r, ResiduePosition::Anywhere))
                     })
                     .or_else(|| {
                         settings
                             .find_replacement(SequencePosition::CTerm, aminoacid, in_place)
-                            .map(|r| (r, Position::AnyCTerm))
+                            .map(|r| (r, ResiduePosition::AnyCTerm))
                     })
             }
         }
@@ -338,10 +338,10 @@ impl<'ontologies> PeptideModificationSearch<'ontologies> {
                             Some(position.aminoacid.aminoacid()),
                             modification,
                         ) {
-                            if location == Position::AnyNTerm {
+                            if location == ResiduePosition::AnyNTerm {
                                 n_term.push(Modification::Simple(replace));
                                 remove.push(i);
-                            } else if location == Position::AnyCTerm {
+                            } else if location == ResiduePosition::AnyCTerm {
                                 c_term.push(Modification::Simple(replace));
                                 remove.push(i);
                             } else {

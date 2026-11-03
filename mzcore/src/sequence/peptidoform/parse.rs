@@ -14,9 +14,9 @@ use crate::{
     quantities::{Tolerance, WithinTolerance},
     sequence::{
         AmbiguousLookup, AmbiguousLookupEntry, AminoAcid, CheckedAminoAcid, CrossLinkLookup,
-        LabileLocation, Linked, MUPSettings, MassTag, Peptidoform, PeptidoformIon,
-        PeptidoformIonSet, PlacementRule, Position, SequenceElement, SequencePosition,
-        SimpleModification, SimpleModificationInner,
+        LabileLocation, Linked, MUPSettings, MassTag, ModificationPosition, Peptidoform,
+        PeptidoformIon, PeptidoformIonSet, PlacementRule, ResiduePosition, SequenceElement,
+        SequencePosition, SimpleModification, SimpleModificationInner,
     },
     system::OrderedMass,
 };
@@ -1378,10 +1378,14 @@ pub(super) fn parse_placement_rules<'a>(
                         )
                     })?]
                     .into(),
-                    Position::AnyNTerm,
+                    ResiduePosition::AnyNTerm,
+                    ModificationPosition::Sidechain,
                 ));
             } else {
-                result.push(PlacementRule::Position(Position::AnyNTerm));
+                result.push(PlacementRule::Position(
+                    ResiduePosition::AnyNTerm,
+                    ModificationPosition::Terminal,
+                ));
             }
         } else if aa.to_ascii_lowercase().starts_with("c-term") {
             if let Some((_, aa)) = aa.split_once(':') {
@@ -1395,10 +1399,14 @@ pub(super) fn parse_placement_rules<'a>(
                         )
                     })?]
                     .into(),
-                    Position::AnyCTerm,
+                    ResiduePosition::AnyCTerm,
+                    ModificationPosition::Sidechain,
                 ));
             } else {
-                result.push(PlacementRule::Position(Position::AnyCTerm));
+                result.push(PlacementRule::Position(
+                    ResiduePosition::AnyCTerm,
+                    ModificationPosition::Terminal,
+                ));
             }
         } else {
             result.push(PlacementRule::AminoAcid(
@@ -1411,7 +1419,8 @@ pub(super) fn parse_placement_rules<'a>(
                     )
                 })?]
                 .into(),
-                Position::Anywhere,
+                ResiduePosition::Anywhere,
+                ModificationPosition::Sidechain,
             ));
         }
     }

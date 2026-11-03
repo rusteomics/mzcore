@@ -375,7 +375,9 @@ mod tests {
         chemistry::{DiagnosticIon, NeutralLoss},
         molecular_formula,
         parse_json::ParseJson,
-        sequence::{AminoAcid, LinkerSpecificity, PlacementRule, Position},
+        sequence::{
+            AminoAcid, LinkerSpecificity, ModificationPosition, PlacementRule, ResiduePosition,
+        },
     };
 
     #[test]
@@ -383,10 +385,11 @@ mod tests {
         let old = r#"{"Asymmetric":[[[{"AminoAcid":[["Selenocysteine"],"AnyCTerm"]},{"AminoAcid":[["GlutamicAcid"],"Anywhere"]}],[{"AminoAcid":[["Selenocysteine"],"AnyNTerm"]}]],[[{"elements":[["U",null,1]],"additional_mass":0.0},{"elements":[["U",null,1]],"additional_mass":0.0}]],[{"elements":[["Te",null,1]],"additional_mass":0.0},{"elements":[["Ne",null,1]],"additional_mass":0.0},{"elements":[["H",null,2],["He",null,3]],"additional_mass":0.0},{"elements":[["H",null,1],["He",null,2]],"additional_mass":0.0},{"elements":[["I",null,1],["Er",null,1]],"additional_mass":0.0},{"elements":[["H",null,12],["C",null,12],["O",null,1]],"additional_mass":0.0}]]}"#;
         let current = LinkerSpecificity::Symmetric {
             rules: vec![
-                PlacementRule::Position(Position::AnyNTerm),
+                PlacementRule::Position(ResiduePosition::AnyNTerm, ModificationPosition::Terminal),
                 PlacementRule::AminoAcid(
                     vec![AminoAcid::Alanine, AminoAcid::Leucine].into(),
-                    Position::Anywhere,
+                    ResiduePosition::Anywhere,
+                    ModificationPosition::Sidechain,
                 ),
             ],
             stubs: vec![(molecular_formula!(H 2 O 1), molecular_formula!(H 2 O 1))],

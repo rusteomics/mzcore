@@ -19,8 +19,8 @@ use crate::{
         ontology_modification::{ModData, OntologyModification},
     },
     sequence::{
-        AminoAcid, CrossId, LinkerLength, LinkerSpecificity, PlacementRule, Position,
-        SimpleModification, SimpleModificationInner,
+        AminoAcid, CrossId, LinkerLength, LinkerSpecificity, ModificationPosition, PlacementRule,
+        ResiduePosition, SimpleModification, SimpleModificationInner,
     },
 };
 
@@ -154,7 +154,7 @@ impl CVSource for XlMod {
                             );
 
                             if properties.origins.0.is_empty() {
-                                properties.origins.0 = vec![PlacementRule::Position(Position::Anywhere)];
+                                properties.origins.0 = vec![PlacementRule::Position(ResiduePosition::Anywhere, ModificationPosition::Sidechain)];
                             }
 
                             let cross_ids = match cross_ids
@@ -229,14 +229,14 @@ impl CVSource for XlMod {
                                 if let Some(sites) = properties.sites {
                                     combine_error(&mut errors, BoxedError::new(
                                         CVError::ItemWarning,
-                                        "Higher order cross-linker", 
-                                        format!("This cross-linker links {sites} sites, but only cross-linkers with two sites are supported for now, this modification will be ignored"), 
+                                        "Higher order cross-linker",
+                                        format!("This cross-linker links {sites} sites, but only cross-linkers with two sites are supported for now, this modification will be ignored"),
                                         Context::default().lines(0, format!("XLMOD:{id:05}"))));
                                 } else {
                                     combine_error(&mut errors, BoxedError::new(
                                         CVError::ItemWarning,
-                                        "Undefined modification", 
-                                        "This modification has no definition of the number of sites it links, this modification will be ignored", 
+                                        "Undefined modification",
+                                        "This modification has no definition of the number of sites it links, this modification will be ignored",
                                         Context::default().lines(0, format!("XLMOD:{id:05}"))));
                                 }
                             }
@@ -696,12 +696,19 @@ fn read_placement_rule(brick: &str) -> Result<PlacementRule, BoxedError<'static,
     {
         Ok(PlacementRule::AminoAcid(
             vec![aa].into(),
-            Position::Anywhere,
+            ResiduePosition::Anywhere,
+            ModificationPosition::Sidechain,
         ))
     } else if brick.eq_ignore_ascii_case("Protein N-term") {
-        Ok(PlacementRule::Position(Position::ProteinNTerm))
+        Ok(PlacementRule::Position(
+            ResiduePosition::ProteinNTerm,
+            ModificationPosition::Terminal,
+        ))
     } else if brick.eq_ignore_ascii_case("Protein C-term") {
-        Ok(PlacementRule::Position(Position::ProteinCTerm))
+        Ok(PlacementRule::Position(
+            ResiduePosition::ProteinCTerm,
+            ModificationPosition::Terminal,
+        ))
     } else {
         Err(BoxedError::new(
             CVError::ItemError,

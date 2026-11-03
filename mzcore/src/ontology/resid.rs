@@ -12,8 +12,8 @@ use crate::{
         ontology_modification::{ModData, OntologyModification},
     },
     sequence::{
-        AminoAcid, LinkerSpecificity, PlacementRule, Position, SimpleModification,
-        SimpleModificationInner,
+        AminoAcid, LinkerSpecificity, ModificationPosition, PlacementRule, ResiduePosition,
+        SimpleModification, SimpleModificationInner,
     },
 };
 
@@ -77,10 +77,13 @@ impl CVSource for Resid {
                 e.to_string(),
             )]
         })?;
-        let document = Document::parse_with_options(&buf, ParsingOptions {
-            allow_dtd: true,
-            ..Default::default()
-        })
+        let document = Document::parse_with_options(
+            &buf,
+            ParsingOptions {
+                allow_dtd: true,
+                ..Default::default()
+            },
+        )
         .map_err(|err| {
             vec![BoxedError::new(
                 CVError::FileCouldNotBeParsed,
@@ -327,8 +330,12 @@ impl CVSource for Resid {
                                         }
                                     }
                                     "Condition" => match rule_node.text().unwrap_or_default() {
-                                        "amino-terminal" => rule.2 = Some(Position::AnyNTerm),
-                                        "carboxyl-terminal" => rule.2 = Some(Position::AnyCTerm),
+                                        "amino-terminal" => {
+                                            rule.2 = Some(ResiduePosition::AnyNTerm)
+                                        }
+                                        "carboxyl-terminal" => {
+                                            rule.2 = Some(ResiduePosition::AnyCTerm)
+                                        }
                                         "carboxamidine" => (),
                                         text if text.starts_with("cross-link")
                                             || text.starts_with("incidental")
@@ -422,7 +429,8 @@ impl CVSource for Resid {
                             specificities.push(LinkerSpecificity::Symmetric {
                                 rules: vec![PlacementRule::AminoAcid(
                                     vec![rule.0].into(),
-                                    rule.2.unwrap_or(Position::Anywhere),
+                                    rule.2.unwrap_or(ResiduePosition::Anywhere),
+                                    ModificationPosition::Sidechain,
                                 )],
                                 stubs: Vec::new(),
                                 neutral_losses: Vec::new(),
@@ -433,11 +441,13 @@ impl CVSource for Resid {
                                 rules: (
                                     vec![PlacementRule::AminoAcid(
                                         vec![rule.0].into(),
-                                        rule.2.unwrap_or(Position::Anywhere),
+                                        rule.2.unwrap_or(ResiduePosition::Anywhere),
+                                        ModificationPosition::Sidechain,
                                     )],
                                     vec![PlacementRule::AminoAcid(
                                         vec![aa].into(),
-                                        rule.2.unwrap_or(Position::Anywhere),
+                                        rule.2.unwrap_or(ResiduePosition::Anywhere),
+                                        ModificationPosition::Sidechain,
                                     )],
                                 ),
                                 stubs: Vec::new(),
@@ -450,7 +460,8 @@ impl CVSource for Resid {
                         specificities.push((
                             vec![PlacementRule::AminoAcid(
                                 vec![rule.0].into(),
-                                rule.2.unwrap_or(Position::Anywhere),
+                                rule.2.unwrap_or(ResiduePosition::Anywhere),
+                                ModificationPosition::Sidechain,
                             )],
                             Vec::new(),
                             Vec::new(),

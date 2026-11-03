@@ -13,8 +13,9 @@ use crate::{
     ontology::{Ontologies, Ontology, STATIC_ONTOLOGIES},
     quantities::Multi,
     sequence::{
-        AminoAcid, CrossLinkName, GlobalModification, MassTag, ModificationId, Peptidoform,
-        PeptidoformIon, PeptidoformIonSet, PlacementRule, Position, SimpleModificationInner,
+        AminoAcid, CrossLinkName, GlobalModification, MassTag, ModificationId,
+        ModificationPosition, Peptidoform, PeptidoformIon, PeptidoformIonSet, PlacementRule,
+        ResiduePosition, SimpleModificationInner,
         peptidoform::parse::{global_modifications, parse_charge_state_2_0},
     },
     system::da,
@@ -32,7 +33,11 @@ fn parse_global_modifications() {
         Ok((
             8,
             vec![GlobalModification::Fixed(
-                PlacementRule::AminoAcid(vec![AminoAcid::AsparticAcid].into(), Position::Anywhere),
+                PlacementRule::AminoAcid(
+                    vec![AminoAcid::AsparticAcid].into(),
+                    ResiduePosition::Anywhere,
+                    ModificationPosition::Sidechain
+                ),
                 Arc::new(SimpleModificationInner::Mass(
                     MassTag::None,
                     da(5.0).into(),
@@ -47,7 +52,11 @@ fn parse_global_modifications() {
         Ok((
             12,
             vec![GlobalModification::Fixed(
-                PlacementRule::AminoAcid(vec![AminoAcid::AsparticAcid].into(), Position::Anywhere),
+                PlacementRule::AminoAcid(
+                    vec![AminoAcid::AsparticAcid].into(),
+                    ResiduePosition::Anywhere,
+                    ModificationPosition::Sidechain
+                ),
                 Arc::new(SimpleModificationInner::Mass(
                     MassTag::Observed,
                     da(5.0).into(),
@@ -62,7 +71,11 @@ fn parse_global_modifications() {
         Ok((
             19,
             vec![GlobalModification::Fixed(
-                PlacementRule::AminoAcid(vec![AminoAcid::AsparticAcid].into(), Position::AnyNTerm),
+                PlacementRule::AminoAcid(
+                    vec![AminoAcid::AsparticAcid].into(),
+                    ResiduePosition::AnyNTerm,
+                    ModificationPosition::Sidechain
+                ),
                 Arc::new(SimpleModificationInner::Mass(
                     MassTag::Ontology(Ontology::Unimod),
                     da(5.0).into(),
@@ -77,7 +90,11 @@ fn parse_global_modifications() {
         Ok((
             19,
             vec![GlobalModification::Fixed(
-                PlacementRule::AminoAcid(vec![AminoAcid::AsparticAcid].into(), Position::AnyNTerm),
+                PlacementRule::AminoAcid(
+                    vec![AminoAcid::AsparticAcid].into(),
+                    ResiduePosition::AnyNTerm,
+                    ModificationPosition::Sidechain
+                ),
                 Arc::new(SimpleModificationInner::Mass(
                     MassTag::None,
                     da(5.0).into(),
@@ -92,7 +109,11 @@ fn parse_global_modifications() {
         Ok((
             26,
             vec![GlobalModification::Fixed(
-                PlacementRule::AminoAcid(vec![AminoAcid::AsparticAcid].into(), Position::AnyCTerm),
+                PlacementRule::AminoAcid(
+                    vec![AminoAcid::AsparticAcid].into(),
+                    ResiduePosition::AnyCTerm,
+                    ModificationPosition::Sidechain
+                ),
                 Arc::new(SimpleModificationInner::Mass(
                     MassTag::None,
                     da(5.0).into(),
@@ -462,7 +483,8 @@ fn parse_custom() {
             specificities: vec![(
                 vec![PlacementRule::AminoAcid(
                     AminoAcid::CANONICAL_AMINO_ACIDS.into(),
-                    Position::Anywhere,
+                    ResiduePosition::Anywhere,
+                    ModificationPosition::Sidechain,
                 )],
                 Vec::new(),
                 Vec::new(),

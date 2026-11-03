@@ -7,7 +7,7 @@ use crate::{
     glycan::FullGlycan,
     quantities::Tolerance,
     sequence::{
-        AminoAcid, CheckedAminoAcid, Modification, Peptidoform, PlacementRule, Position,
+        AminoAcid, CheckedAminoAcid, Modification, Peptidoform, PlacementRule, ResiduePosition,
         SemiAmbiguous, SequenceElement, SequencePosition, SimpleLinear, SimpleModification,
         SimpleModificationInner,
     },
@@ -50,23 +50,29 @@ pub fn building_blocks(
     }
     fn n_term_options(amino_acids: &[AminoAcid], rule: &PlacementRule) -> Vec<AminoAcid> {
         match rule {
-            PlacementRule::AminoAcid(aa, Position::AnyNTerm | Position::ProteinNTerm) => {
-                amino_acids.iter().filter(|a| aa.contains(a)).copied().collect_vec()
-            }
-            PlacementRule::Position(Position::AnyNTerm | Position::ProteinNTerm) => {
-                amino_acids.iter().copied().collect_vec()
-            }
+            PlacementRule::AminoAcid(
+                aa,
+                ResiduePosition::AnyNTerm | ResiduePosition::ProteinNTerm,
+                _,
+            ) => amino_acids.iter().filter(|a| aa.contains(a)).copied().collect_vec(),
+            PlacementRule::Position(
+                ResiduePosition::AnyNTerm | ResiduePosition::ProteinNTerm,
+                _,
+            ) => amino_acids.iter().copied().collect_vec(),
             _ => Vec::new(),
         }
     }
     fn c_term_options(amino_acids: &[AminoAcid], rule: &PlacementRule) -> Vec<AminoAcid> {
         match rule {
-            PlacementRule::AminoAcid(aa, Position::AnyCTerm | Position::ProteinCTerm) => {
-                amino_acids.iter().filter(|a| aa.contains(a)).copied().collect_vec()
-            }
-            PlacementRule::Position(Position::AnyCTerm | Position::ProteinCTerm) => {
-                amino_acids.iter().copied().collect_vec()
-            }
+            PlacementRule::AminoAcid(
+                aa,
+                ResiduePosition::AnyCTerm | ResiduePosition::ProteinCTerm,
+                _,
+            ) => amino_acids.iter().filter(|a| aa.contains(a)).copied().collect_vec(),
+            PlacementRule::Position(
+                ResiduePosition::AnyCTerm | ResiduePosition::ProteinCTerm,
+                _,
+            ) => amino_acids.iter().copied().collect_vec(),
             _ => Vec::new(),
         }
     }
@@ -501,17 +507,20 @@ mod tests {
             None,
         )
         .collect();
-        assert_eq!(&sets, &[
-            Peptidoform::pro_forma("GA", &ontologies)
-                .unwrap()
-                .0
-                .into_simple_linear()
-                .unwrap(),
-            Peptidoform::pro_forma("Q", &ontologies)
-                .unwrap()
-                .0
-                .into_simple_linear()
-                .unwrap(),
-        ]);
+        assert_eq!(
+            &sets,
+            &[
+                Peptidoform::pro_forma("GA", &ontologies)
+                    .unwrap()
+                    .0
+                    .into_simple_linear()
+                    .unwrap(),
+                Peptidoform::pro_forma("Q", &ontologies)
+                    .unwrap()
+                    .0
+                    .into_simple_linear()
+                    .unwrap(),
+            ]
+        );
     }
 }

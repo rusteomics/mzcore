@@ -14,7 +14,9 @@ use crate::{
         ontology_modification::{ModData, OntologyModification},
     },
     prelude::AminoAcid,
-    sequence::{CrossId, PlacementRule, SimpleModification, SimpleModificationInner},
+    sequence::{
+        CrossId, ModificationPosition, PlacementRule, SimpleModification, SimpleModificationInner,
+    },
 };
 
 /// Unimod modifications
@@ -79,10 +81,13 @@ impl CVSource for Unimod {
                 e.to_string(),
             )]
         })?;
-        let document = Document::parse_with_options(&buf, ParsingOptions {
-            allow_dtd: true,
-            ..Default::default()
-        })
+        let document = Document::parse_with_options(
+            &buf,
+            ParsingOptions {
+                allow_dtd: true,
+                ..Default::default()
+            },
+        )
         .map_err(|err| {
             vec![BoxedError::small(
                 CVError::FileCouldNotBeParsed,
@@ -151,7 +156,7 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, BoxedError<'static, CV
             })?; // Check if there is a way to recognise linkers
             let position = child
                 .attribute("position")
-                .map_or(Ok(crate::sequence::Position::Anywhere), |p| {
+                .map_or(Ok(crate::sequence::ResiduePosition::Anywhere), |p| {
                     p.parse().map_err(|()| {
                     BoxedError::new(
                         CVError::ItemError,
@@ -162,7 +167,9 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, BoxedError<'static, CV
                 })
                 })?;
             let rule = match (site, position) {
-                ("C-term" | "N-term", pos) => PlacementRule::Position(pos),
+                ("C-term" | "N-term", pos) => {
+                    PlacementRule::Position(pos, ModificationPosition::Terminal)
+                }
                 (aa, pos) => PlacementRule::AminoAcid(
                     aa.chars()
                         .map(|c| {
@@ -177,6 +184,7 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, BoxedError<'static, CV
                         })
                         .collect::<Result<ThinVec<AminoAcid>, BoxedError<'static, CVError>>>()?,
                     pos,
+                    ModificationPosition::Sidechain,
                 ),
             };
             let losses = child

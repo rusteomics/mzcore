@@ -12,7 +12,7 @@ use crate::{
     align_matrix::Matrix,
     diagonal_array::DiagonalArray,
     mass_alignment::{
-        align_cached, mass_range, mass_range_expanded, score, score_pair, score_pair_mass_mismatch,
+        mass_range, mass_range_expanded, score, score_pair, score_pair_mass_mismatch,
     },
     multi_alignment::structs::{MultiAlignSide, MultiAlignType, MultiAlignment, MultiPiece},
 };

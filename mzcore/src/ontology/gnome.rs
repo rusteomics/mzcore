@@ -15,8 +15,8 @@ use crate::{
     helper_functions::explain_number_error,
     ontology::Ontology,
     sequence::{
-        CrossId, GnoComposition, GnoSubsumption, ModificationId, Position, SimpleModification,
-        SimpleModificationInner,
+        CrossId, GnoComposition, GnoSubsumption, ModificationId, ModificationPosition,
+        ResiduePosition, SimpleModification, SimpleModificationInner,
     },
 };
 
@@ -241,7 +241,10 @@ fn parse_gnome(
                             CrossId::Mod(
                                 Ontology::Gnome,
                                 id,
-                                crate::sequence::PlacementRule::Position(Position::Anywhere),
+                                crate::sequence::PlacementRule::Position(
+                                    ResiduePosition::Anywhere,
+                                    ModificationPosition::Sidechain,
+                                ),
                             )
                         });
                         if id.is_none() {

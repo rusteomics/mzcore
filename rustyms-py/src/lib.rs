@@ -8,7 +8,7 @@ use mzalign::AlignScoring;
 use mzannotate::prelude::{GlycanFragmention, PeptidoformFragmentation, ToMzPAF};
 use mzcore::{
     chemistry::{AmbiguousMolecule, MassOutputType, Molecule, OutputMolecularFormula},
-    sequence::{IsAminoAcid, Linked, SimpleLinear},
+    sequence::{IsAminoAcid, Linked, ModificationPosition, SimpleLinear},
     system::dalton,
 };
 use pyo3::{exceptions::PyValueError, prelude::*, types::PyType};
@@ -56,7 +56,8 @@ fn find_isobaric_sets(
                 (!r.is_empty()).then(|| {
                     mzcore::sequence::PlacementRule::AminoAcid(
                         r.into_iter().map(|a| a.0).collect(),
-                        mzcore::sequence::Position::Anywhere,
+                        mzcore::sequence::ResiduePosition::Anywhere,
+                        ModificationPosition::Sidechain,
                     )
                 }),
             )
@@ -70,7 +71,8 @@ fn find_isobaric_sets(
                 (!r.is_empty()).then(|| {
                     mzcore::sequence::PlacementRule::AminoAcid(
                         r.into_iter().map(|a| a.0).collect(),
-                        mzcore::sequence::Position::Anywhere,
+                        mzcore::sequence::ResiduePosition::Anywhere,
+                        ModificationPosition::Sidechain,
                     )
                 }),
             )
@@ -105,7 +107,7 @@ enum MassMode {
 /// Parameters
 /// ----------
 /// symbol : str
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Clone, Copy, Debug)]
 pub struct Element(mzcore::chemistry::Element);
 
@@ -177,7 +179,7 @@ impl std::fmt::Display for Element {
 /// Molecular formula.
 ///
 /// A molecular formula: a selection of elements of specified isotopes together forming a structure.
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Clone, Debug)]
 pub struct MolecularFormula(mzcore::chemistry::MolecularFormula);
 
@@ -418,8 +420,8 @@ impl MolecularFormula {
 }
 
 /// A selection of ions that together define the charge of a peptidoform.
-#[pyclass]
-#[derive(Debug)]
+#[pyclass(from_py_object)]
+#[derive(Clone, Debug)]
 pub struct MolecularCharge(mzcore::chemistry::MolecularCharge);
 
 #[pymethods]
@@ -492,7 +494,7 @@ impl MolecularCharge {
 /// ----------
 /// name : str
 ///    The name of the amino acid.
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Clone, Copy, Debug)]
 pub struct AminoAcid(mzcore::sequence::AminoAcid);
 
@@ -572,7 +574,7 @@ impl std::fmt::Display for AminoAcid {
 /// name : str
 ///   The name of the modification. Any simple modification as allowed in ProForma (no ambiguous or
 /// cross-linked modifications).
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Clone, Debug)]
 pub struct SimpleModification(mzcore::sequence::SimpleModification);
 
@@ -624,7 +626,7 @@ impl SimpleModification {
 /// ----------
 /// name : str
 ///   The name of the modification.
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Clone, Debug)]
 pub struct Modification(mzcore::sequence::Modification);
 
@@ -658,8 +660,8 @@ impl Modification {
 }
 
 /// A theoretical fragment of a peptidoform.
-#[pyclass]
-#[derive(Debug)]
+#[pyclass(from_py_object)]
+#[derive(Clone, Debug)]
 pub struct Fragment(mzannotate::fragment::Fragment<OutputMolecularFormula>);
 
 #[pymethods]
@@ -751,8 +753,8 @@ impl Fragment {
 }
 
 /// All types of fragments.
-#[pyclass]
-#[derive(Debug)]
+#[pyclass(from_py_object)]
+#[derive(Clone, Debug)]
 pub struct FragmentType(mzannotate::fragment::FragmentType);
 
 #[pymethods]
@@ -783,7 +785,7 @@ impl FragmentType {
 }
 
 /// The kind of fragment
-#[pyclass(eq, eq_int)]
+#[pyclass(eq, eq_int, from_py_object)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[expect(non_camel_case_types)]
 pub enum FragmentKind {
@@ -846,8 +848,8 @@ impl From<mzannotate::fragment::FragmentKind> for FragmentKind {
 }
 
 /// One block in a sequence meaning an amino acid and its accompanying modifications.
-#[pyclass]
-#[derive(Debug)]
+#[pyclass(from_py_object)]
+#[derive(Clone, Debug)]
 pub struct SequenceElement(mzcore::sequence::SequenceElement<Linked>);
 
 #[pymethods]
@@ -900,6 +902,7 @@ enum FragmentationModel {
     All,
     CID,
     ETD,
+    ETDTopDown,
     ETciD,
     EAD,
     EAciD,
@@ -912,6 +915,9 @@ fn match_model(model: &FragmentationModel) -> mzannotate::annotation::model::Fra
         FragmentationModel::All => mzannotate::annotation::model::FragmentationModel::all().clone(),
         FragmentationModel::CID => mzannotate::annotation::model::FragmentationModel::cid().clone(),
         FragmentationModel::ETD => mzannotate::annotation::model::FragmentationModel::etd().clone(),
+        FragmentationModel::ETDTopDown => {
+            mzannotate::annotation::model::FragmentationModel::td_etd().clone()
+        }
         FragmentationModel::ETciD => {
             mzannotate::annotation::model::FragmentationModel::etcid().clone()
         }
@@ -931,7 +937,7 @@ fn match_model(model: &FragmentationModel) -> mzannotate::annotation::model::Fra
 /// ----------
 /// parameters : MatchingParameters
 ///     The parameters
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Clone, Debug)]
 pub struct MatchingParameters(mzannotate::annotation::model::MatchingParameters);
 
@@ -965,7 +971,7 @@ impl MatchingParameters {
 /// ----------
 /// position : SequencePosition
 ///     The position
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Clone, Copy, Debug)]
 pub struct SequencePosition(mzcore::sequence::SequencePosition);
 
@@ -1019,7 +1025,7 @@ impl SequencePosition {
 /// ----------
 /// proforma : str
 ///     The ProForma string.
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Clone, Debug)]
 pub struct PeptidoformIonSet(mzcore::sequence::PeptidoformIonSet);
 
@@ -1121,7 +1127,7 @@ impl PeptidoformIonSet {
 /// ----------
 /// iupac : str
 ///     The iupac condensed definition.
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Clone, Debug)]
 pub struct GlycanStructure(mzcore::glycan::GlycanStructure);
 
@@ -1196,7 +1202,7 @@ impl GlycanStructure {
 /// ----------
 /// proforma : str
 ///     The ProForma string.
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Clone, Debug)]
 pub struct PeptidoformIon(mzcore::sequence::PeptidoformIon);
 
@@ -1284,7 +1290,7 @@ impl PeptidoformIon {
 /// ----------
 /// proforma : str
 ///     The ProForma string.
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Clone, Debug)]
 pub struct Peptidoform(mzcore::sequence::Peptidoform<Linked>);
 
@@ -1493,7 +1499,8 @@ impl Peptidoform {
     }
 }
 
-#[pyclass]
+#[pyclass(from_py_object)]
+#[derive(Clone, Debug)]
 struct Alignment(
     mzalign::Alignment<
         mzcore::sequence::Peptidoform<SimpleLinear>,
@@ -1517,7 +1524,8 @@ impl Alignment {
     }
 }
 
-#[pyclass]
+#[pyclass(from_py_object)]
+#[derive(Clone, Debug)]
 /// Represents an annotated peak in a mass spectrometry spectrum.
 struct AnnotatedPeak(
     mzannotate::spectrum::AnnotatedPeak<mzannotate::fragment::Fragment<OutputMolecularFormula>>,
@@ -1582,8 +1590,8 @@ impl std::fmt::Display for AnnotatedPeak {
 }
 
 /// An annotated spectrum.
-#[pyclass]
-#[derive(Debug)]
+#[pyclass(from_py_object)]
+#[derive(Clone, Debug)]
 pub struct AnnotatedSpectrum(mzannotate::spectrum::AnnotatedSpectrum<OutputMolecularFormula>);
 
 #[pymethods]
@@ -1642,8 +1650,8 @@ fn mzcore_py03(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
 }
 
 /// An error with context where it originated
-#[pyclass]
-#[derive(Debug)]
+#[pyclass(from_py_object)]
+#[derive(Clone, Debug)]
 pub struct BoxedError(context_error::BoxedError<'static, context_error::BasicKind>);
 
 impl std::error::Error for BoxedError {}

@@ -5,8 +5,9 @@ use mzcore::{
     csv::{CsvLine, parse_csv},
     ontology::Ontologies,
     sequence::{
-        AminoAcid, FlankingSequence, MUPSettings, Modification, Peptidoform, PeptidoformIonSet,
-        PlacementRule, Position, SequencePosition, SimpleLinear, SimpleModification,
+        AminoAcid, FlankingSequence, MUPSettings, Modification, ModificationPosition, Peptidoform,
+        PeptidoformIonSet, PlacementRule, ResiduePosition, SequencePosition, SimpleLinear,
+        SimpleModification,
     },
     system::{Mass, MassOverCharge, OrderedTime, f32::Time, isize::Charge},
 };
@@ -115,7 +116,7 @@ format_family!(
         for (m, aa, index) in &parsed.peptide_modifications {
             if let Some(index) = index {
                 parsed.peptide.add_simple_modification(SequencePosition::Index(*index, parsed.peptide.len()), m.clone());
-            } else if !parsed.peptide.add_unknown_position_modification(m.clone(), .., &MUPSettings{position: Some(vec![PlacementRule::AminoAcid(vec![*aa].into(), Position::Anywhere)]), .. Default::default()})
+            } else if !parsed.peptide.add_unknown_position_modification(m.clone(), .., &MUPSettings{position: Some(vec![PlacementRule::AminoAcid(vec![*aa].into(), ResiduePosition::Anywhere, ModificationPosition::Sidechain)]), .. Default::default()})
             {
                 return Err(BoxedError::new(BasicKind::Error,
                         "Modification of unknown position cannot be placed",
