@@ -19,7 +19,7 @@ use mzcore::{
 use mzcv::{AccessionCode, curie, term};
 use mzdata::{
     mzpeaks::prelude::PeakCollectionMut,
-    params::{ParamValue, Unit, Value},
+    params::{Unit, Value},
     spectrum::{Precursor, ScanEvent, ScanWindow, SelectedIon},
 };
 

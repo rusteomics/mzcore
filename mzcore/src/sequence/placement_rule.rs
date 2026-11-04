@@ -41,7 +41,7 @@ impl Space for PlacementRule {
 
 impl ParseJson for PlacementRule {
     fn from_json_value(value: serde_json::Value) -> Result<Self, BoxedError<'static, BasicKind>> {
-        if let serde_json::Value::Object(map) = dbg!(&value) {
+        if let serde_json::Value::Object(map) = &value {
             if let Some(v) = map.get("Terminal").or_else(|| map.get("Position")) {
                 if let serde_json::Value::String(v) = v {
                     let p = ResiduePosition::from_str(v).map_err(|()| {
