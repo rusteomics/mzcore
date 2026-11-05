@@ -460,6 +460,110 @@ impl MonoSaccharide {
         }
     }
 
+    /// Create a IUPAC condensed name for this monosaccharide
+    pub fn iupac_condensed_name(&self) -> String {
+        // TODO: recognise Fucose
+        use std::fmt::Write;
+        let mut name = String::new();
+
+        match self.configuration {
+            Some(Configuration::L) => name.push_str("L-"),
+            Some(Configuration::D) => name.push_str("D-"),
+            _ => (),
+        }
+
+        let mut substitutions = self
+            .substituents
+            .iter()
+            .copied()
+            .map(|(s, l)| {
+                (
+                    (s, match l {
+                        GlycanSubstituentLocation::Single(_, l)
+                        | GlycanSubstituentLocation::Double(_, l, _) => l,
+                    }),
+                    l,
+                )
+            })
+            .into_group_map();
+        let write_locs = |locations: &[GlycanSubstituentLocation],
+                          symbol: &str,
+                          leaving: GlycanSubstituentLeavingGroup,
+                          name: &mut String| {
+            let mut following = false;
+            let mut double = false;
+            for l in locations {
+                if following {
+                    name.push(',');
+                } else {
+                    following = true;
+                }
+                match l {
+                    GlycanSubstituentLocation::Single(None, _) => {
+                        name.push('?');
+                    }
+                    GlycanSubstituentLocation::Single(Some(l), _) => {
+                        let _ = write!(name, "{l}");
+                    }
+                    GlycanSubstituentLocation::Double(None, ..) => {
+                        double = true;
+                        name.push_str("?-?");
+                    }
+                    GlycanSubstituentLocation::Double(Some((a, b)), ..) => {
+                        double = true;
+                        let _ = write!(name, "{a}-{b}");
+                    }
+                }
+            }
+            if leaving == GlycanSubstituentLeavingGroup::Hydrogen {
+                name.push('C');
+            }
+            name.push_str(symbol);
+            if !double && locations.len() > 1 {
+                let _ = write!(name, "{}", locations.len());
+            }
+        };
+
+        for locations in substitutions.values_mut() {
+            locations.sort_unstable();
+        }
+
+        if let Some(locations) = substitutions.remove(&(
+            GlycanSubstituent::Deoxy,
+            GlycanSubstituentLeavingGroup::Hydroxy,
+        )) {
+            write_locs(
+                &locations,
+                "d",
+                GlycanSubstituentLeavingGroup::Hydroxy,
+                &mut name,
+            );
+        }
+
+        if let Some(sugar) = self.base_sugar.iupac_name() {
+            name.push_str(sugar);
+        } else {
+            name.push_str("???");
+        }
+        if self.furanose {
+            name.push('f');
+        }
+
+        for ((substitution, leaving), locations) in
+            substitutions.into_iter().sorted_by_key(|(_, l)| match l.first() {
+                Some(
+                    GlycanSubstituentLocation::Single(Some(n), _)
+                    | GlycanSubstituentLocation::Double(Some((n, _)), ..),
+                ) => Some(*n),
+                _ => None,
+            })
+        {
+            write_locs(&locations, substitution.notation(), leaving, &mut name);
+        }
+
+        name
+    }
+
     /// Get the base sugar of this monosaccharide
     pub const fn base_sugar(&self) -> &BaseSugar {
         &self.base_sugar

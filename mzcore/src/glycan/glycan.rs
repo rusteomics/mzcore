@@ -670,6 +670,48 @@ impl BaseSugar {
             _ => false,
         }
     }
+
+    /// Get the IUPAC name for this sugar, or None if this sugar is a custom sugar
+    pub const fn iupac_name(&self) -> Option<&'static str> {
+        match self {
+            Self::Custom(_) => None,
+            Self::Sugar => Some("Sug"),
+            Self::Triose => Some("Tri"),
+            Self::Tetrose(None) => Some("Tet"),
+            Self::Tetrose(Some(TetroseIsomer::Erythrose)) => Some("Ery"),
+            Self::Tetrose(Some(TetroseIsomer::Threose)) => Some("Tho"),
+            Self::Pentose(None) => Some("Pen"),
+            Self::Pentose(Some(PentoseIsomer::Arabinose)) => Some("Ara"),
+            Self::Pentose(Some(PentoseIsomer::Lyxose)) => Some("Lyx"),
+            Self::Pentose(Some(PentoseIsomer::Ribose)) => Some("Rib"),
+            Self::Pentose(Some(PentoseIsomer::Xylose)) => Some("Xyl"),
+            Self::Pentose(Some(PentoseIsomer::Xylulose)) => Some("Xul"),
+            Self::Hexose(None) => Some("Hex"),
+            Self::Hexose(Some(HexoseIsomer::Allose)) => Some("All"),
+            Self::Hexose(Some(HexoseIsomer::Altrose)) => Some("Alt"),
+            Self::Hexose(Some(HexoseIsomer::Fructose)) => Some("Fru"),
+            Self::Hexose(Some(HexoseIsomer::Galactose)) => Some("Gal"),
+            Self::Hexose(Some(HexoseIsomer::Glucose)) => Some("Glc"),
+            Self::Hexose(Some(HexoseIsomer::Gulose)) => Some("Gul"),
+            Self::Hexose(Some(HexoseIsomer::Idose)) => Some("Ido"),
+            Self::Hexose(Some(HexoseIsomer::Mannose)) => Some("Man"),
+            Self::Hexose(Some(HexoseIsomer::Psicose)) => Some("Psi"),
+            Self::Hexose(Some(HexoseIsomer::Sorbose)) => Some("Sor"),
+            Self::Hexose(Some(HexoseIsomer::Tagatose)) => Some("Tag"),
+            Self::Hexose(Some(HexoseIsomer::Talose)) => Some("Tal"),
+            Self::Heptose(None) => Some("Hep"),
+            Self::Heptose(Some(HeptoseIsomer::GlyceroMannoHeptopyranose)) => Some("gro-manHep"),
+            Self::Heptose(Some(HeptoseIsomer::Sedoheptulose)) => Some("Sed"),
+            Self::Octose => Some("Oct"),
+            Self::Nonose(None) => Some("Non"),
+            Self::Nonose(Some(NonoseIsomer::Aci)) => Some("Aci"),
+            Self::Nonose(Some(NonoseIsomer::ELeg)) => Some("eLeg"),
+            Self::Nonose(Some(NonoseIsomer::Kdn)) => Some("Kdn"),
+            Self::Nonose(Some(NonoseIsomer::Leg)) => Some("Leg"),
+            Self::Nonose(Some(NonoseIsomer::Pse)) => Some("Pse"),
+            Self::Decose => Some("Dec"),
+        }
+    }
 }
 
 impl Display for BaseSugar {
@@ -954,7 +996,8 @@ impl Molecule for GlycanSubstituent {
             // and H on a single carbon
             Self::Ethanolamine => molecular_formula!(H 6 C 2 N 1 O 1),
             Self::EtOH => molecular_formula!(H 5 C 2 O 2),
-            Self::Element(el) => MolecularFormula::new(&[(*el, None, 1)], &[]).unwrap(),
+            Self::Element(el) => MolecularFormula::new(&[(*el, None, 1)], &[])
+                .unwrap_or_else(|| panic!("Invalid element in glycan substitution: '{el}'")),
             Self::Formyl => molecular_formula!(H 1 C 1 O 1),
             Self::Glyceryl | Self::Lac => molecular_formula!(H 5 C 3 O 3),
             Self::Glycolyl => molecular_formula!(H 3 C 2 O 2),

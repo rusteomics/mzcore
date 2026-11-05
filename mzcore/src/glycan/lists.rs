@@ -478,7 +478,7 @@ pub(crate) const POSTFIX_SUBSTITUENTS: &[(
         "cme",
         (
             GlycanSubstituent::Methyl,
-            GlycanSubstituentLeavingGroup::Hydroxy,
+            GlycanSubstituentLeavingGroup::Hydrogen,
         ),
     ), // unsure about the difference with Me
     (
@@ -540,7 +540,7 @@ pub(crate) const POSTFIX_SUBSTITUENTS: &[(
     (
         "etoh",
         (
-            GlycanSubstituent::Ethanolamine,
+            GlycanSubstituent::EtOH,
             GlycanSubstituentLeavingGroup::Hydroxy,
         ),
     ),
@@ -601,9 +601,37 @@ pub(crate) const POSTFIX_SUBSTITUENTS: &[(
         ),
     ),
     (
+        "cfo",
+        (
+            GlycanSubstituent::Formyl,
+            GlycanSubstituentLeavingGroup::Hydrogen,
+        ),
+    ),
+    (
         "dime",
         (
             GlycanSubstituent::DiMethyl,
+            GlycanSubstituentLeavingGroup::Hydroxy,
+        ),
+    ),
+    (
+        "cf",
+        (
+            GlycanSubstituent::Element(crate::chemistry::Element::F),
+            GlycanSubstituentLeavingGroup::Hydrogen,
+        ),
+    ),
+    (
+        "cn",
+        (
+            GlycanSubstituent::Amino,
+            GlycanSubstituentLeavingGroup::Hydrogen,
+        ),
+    ),
+    (
+        "sh",
+        (
+            GlycanSubstituent::Element(crate::chemistry::Element::S), // TODO: it has one H bound
             GlycanSubstituentLeavingGroup::Hydroxy,
         ),
     ),

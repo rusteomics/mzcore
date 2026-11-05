@@ -492,7 +492,7 @@ pub(super) enum Direction {
     Obvious,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum MAPSymbol {
     Element(Element),
     /// '*' or '*n'
@@ -510,7 +510,7 @@ pub(super) enum MAPSymbol {
     AromaticEnd,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Chirality {
     R,
     S,

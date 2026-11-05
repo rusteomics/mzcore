@@ -6,7 +6,7 @@ use crate::{
         BaseSugar, GlycanStructure, GlycanSubstituent, GlycanSubstituentLeavingGroup,
         GlycanSubstituentLocation, HexoseIsomer, MonoSaccharide,
         wurcs::structs::{
-            BackBone, Carbon, GLIPOption, LIPOption, Linkage, Lip, MAPSymbol, Residue,
+            BackBone, Carbon, Chirality, GLIPOption, LIPOption, Linkage, Lip, MAPSymbol, Residue,
             TerminalCarbon, Wurcs,
         },
     },
@@ -30,6 +30,7 @@ pub enum WurcsParseError {
     Cycle,
     /// There are unconnected residues
     UnconnectedResidues,
+    /// An invalid residue id was used
     InvalidResidueCode,
 }
 
@@ -68,7 +69,13 @@ impl Wurcs {
 
         let mut added = vec![false; self.sequence.len()];
 
-        Self::make_tree(0, &residues, &self.sequence, &connections, &mut added)
+        let tree = Self::make_tree(0, &residues, &self.sequence, &connections, &mut added)?;
+
+        if added.iter().all(|a| *a) {
+            Ok(tree)
+        } else {
+            Err(WurcsParseError::UnconnectedResidues)
+        }
     }
 
     fn make_tree(
@@ -84,6 +91,7 @@ impl Wurcs {
         } else if added[residue] {
             Err(WurcsParseError::Cycle)
         } else {
+            added[residue] = true;
             Ok(GlycanStructure {
                 sugar: residues[(sequence[residue] - 1) as usize].clone(),
                 branches: connections[residue]
@@ -190,7 +198,7 @@ impl Residue {
                     GlycanSubstituentLeavingGroup::Hydroxy,
                 ),
             )),
-            o => println!("Not added yet: {o:?}"),
+            o => (), //println!("Not added yet: {o:?}"),
         }
         // Assumes a C=OH
         match end {
@@ -210,14 +218,64 @@ impl Residue {
             //         GlycanSubstituentLeavingGroup::Hydroxy,
             //     ),
             // )),
-            o => println!("Not added yet: {o:?}"),
+            o => (), //println!("Not added yet: {o:?}"),
         }
         let mut internal_cycle_count = 0;
+        // TODO: there are tons of modifications with linkage: NMe, PEtn, etc, it might be more
+        // efficient to create neater handling of this or all of these need to be added as
+        // substituents. These sometimes might have the location in the middle in iupac-condensed:
+        // N2Me, or I just don't known what is going on here.
 
         for m in self.mods {
             if m.lips.len() == 1 {
                 match m.modification.as_slice() {
                     &[] => (),
+                    //*OCC/3=O
+                    &[
+                        MAPSymbol::Star(None),
+                        MAPSymbol::Element(Element::O),
+                        MAPSymbol::Element(Element::C),
+                        MAPSymbol::Element(Element::C),
+                        MAPSymbol::Branch(3),
+                        MAPSymbol::DoubleBond,
+                        MAPSymbol::Element(Element::O),
+                    ] => res.substituents.push((
+                        GlycanSubstituent::Acetyl,
+                        GlycanSubstituentLocation::Single(
+                            match m.lips[0] {
+                                LIPOption::Known(Lip { position, .. }) => {
+                                    position.and_then(NonZeroU8::new)
+                                }
+                                _ => None,
+                            },
+                            GlycanSubstituentLeavingGroup::Hydroxy,
+                        ),
+                    )),
+                    // *OCC^SC/4O/3=O
+                    &[
+                        MAPSymbol::Star(None),
+                        MAPSymbol::Element(Element::O),
+                        MAPSymbol::Element(Element::C),
+                        MAPSymbol::Element(Element::C),
+                        MAPSymbol::Chirality(Chirality::S),
+                        MAPSymbol::Element(Element::C),
+                        MAPSymbol::Branch(4),
+                        MAPSymbol::Element(Element::O),
+                        MAPSymbol::Branch(3),
+                        MAPSymbol::DoubleBond,
+                        MAPSymbol::Element(Element::O),
+                    ] => res.substituents.push((
+                        GlycanSubstituent::Lac,
+                        GlycanSubstituentLocation::Single(
+                            match m.lips[0] {
+                                LIPOption::Known(Lip { position, .. }) => {
+                                    position.and_then(NonZeroU8::new)
+                                }
+                                _ => None,
+                            },
+                            GlycanSubstituentLeavingGroup::Hydroxy,
+                        ),
+                    )),
                     // NCC/3=O
                     &[
                         MAPSymbol::Star(None),
@@ -227,20 +285,256 @@ impl Residue {
                         MAPSymbol::Branch(3),
                         MAPSymbol::DoubleBond,
                         MAPSymbol::Element(Element::O),
-                    ] => res.substituents.push((GlycanSubstituent::NAcetyl, match m.lips[0] {
-                        LIPOption::Known(Lip { position, .. }) => {
-                            GlycanSubstituentLocation::Single(
-                                position.and_then(NonZeroU8::new),
-                                GlycanSubstituentLeavingGroup::Hydroxy,
-                            )
-                        }
-                        _ => GlycanSubstituentLocation::Single(
-                            None,
+                    ] => res.substituents.push((
+                        GlycanSubstituent::NAcetyl,
+                        GlycanSubstituentLocation::Single(
+                            match m.lips[0] {
+                                LIPOption::Known(Lip { position, .. }) => {
+                                    position.and_then(NonZeroU8::new)
+                                }
+                                _ => None,
+                            },
                             GlycanSubstituentLeavingGroup::Hydroxy,
                         ),
-                    })),
+                    )),
+                    // *NCCO/3=O
+                    &[
+                        MAPSymbol::Star(None),
+                        MAPSymbol::Element(Element::N),
+                        MAPSymbol::Element(Element::C),
+                        MAPSymbol::Element(Element::C),
+                        MAPSymbol::Element(Element::O),
+                        MAPSymbol::Branch(3),
+                        MAPSymbol::DoubleBond,
+                        MAPSymbol::Element(Element::O),
+                    ] => res.substituents.push((
+                        GlycanSubstituent::Glycolyl,
+                        GlycanSubstituentLocation::Single(
+                            match m.lips[0] {
+                                LIPOption::Known(Lip { position, .. }) => {
+                                    position.and_then(NonZeroU8::new)
+                                }
+                                _ => None,
+                            },
+                            GlycanSubstituentLeavingGroup::Hydroxy,
+                        ),
+                    )),
+                    n if n == parse_map(b"*N") => {
+                        res.substituents.push((
+                            GlycanSubstituent::Amino,
+                            GlycanSubstituentLocation::Single(
+                                match m.lips[0] {
+                                    LIPOption::Known(Lip { position, .. }) => {
+                                        position.and_then(NonZeroU8::new)
+                                    }
+                                    _ => None,
+                                },
+                                GlycanSubstituentLeavingGroup::Hydroxy,
+                            ),
+                        ));
+                    }
+                    n if n == parse_map(b"*NC=O") => {
+                        res.substituents.push((
+                            GlycanSubstituent::NFo,
+                            GlycanSubstituentLocation::Single(
+                                match m.lips[0] {
+                                    LIPOption::Known(Lip { position, .. }) => {
+                                        position.and_then(NonZeroU8::new)
+                                    }
+                                    _ => None,
+                                },
+                                GlycanSubstituentLeavingGroup::Hydroxy,
+                            ),
+                        ));
+                    }
+                    n if n == parse_map(b"*OC=O") => {
+                        res.substituents.push((
+                            GlycanSubstituent::Formyl,
+                            GlycanSubstituentLocation::Single(
+                                match m.lips[0] {
+                                    LIPOption::Known(Lip { position, .. }) => {
+                                        position.and_then(NonZeroU8::new)
+                                    }
+                                    _ => None,
+                                },
+                                GlycanSubstituentLeavingGroup::Hydroxy,
+                            ),
+                        ));
+                    }
+                    // TODO: depends on the linkage if it is EtOH or Etn
+                    n if n == parse_map(b"*OCCO") => {
+                        res.substituents.push((
+                            GlycanSubstituent::EtOH,
+                            GlycanSubstituentLocation::Single(
+                                match m.lips[0] {
+                                    LIPOption::Known(Lip { position, .. }) => {
+                                        position.and_then(NonZeroU8::new)
+                                    }
+                                    _ => None,
+                                },
+                                GlycanSubstituentLeavingGroup::Hydroxy,
+                            ),
+                        ));
+                    }
+                    n if n == parse_map(b"*F") => {
+                        res.substituents.push((
+                            GlycanSubstituent::Element(Element::F), /* TODO: there might be
+                                                                     * hydrogens that also need
+                                                                     * to be added */
+                            GlycanSubstituentLocation::Single(
+                                match m.lips[0] {
+                                    LIPOption::Known(Lip { position, .. }) => {
+                                        position.and_then(NonZeroU8::new)
+                                    }
+                                    _ => None,
+                                },
+                                GlycanSubstituentLeavingGroup::Hydroxy,
+                            ),
+                        ));
+                    }
+                    n if n == parse_map(b"*S") => {
+                        res.substituents.push((
+                            GlycanSubstituent::Element(Element::S), /* TODO: there might be
+                                                                     * hydrogens that also need
+                                                                     * to be added */
+                            GlycanSubstituentLocation::Single(
+                                match m.lips[0] {
+                                    LIPOption::Known(Lip { position, .. }) => {
+                                        position.and_then(NonZeroU8::new)
+                                    }
+                                    _ => None,
+                                },
+                                GlycanSubstituentLeavingGroup::Hydroxy,
+                            ),
+                        ));
+                    }
+                    n if n == parse_map(b"*I") => {
+                        res.substituents.push((
+                            GlycanSubstituent::Element(Element::I),
+                            GlycanSubstituentLocation::Single(
+                                match m.lips[0] {
+                                    LIPOption::Known(Lip { position, .. }) => {
+                                        position.and_then(NonZeroU8::new)
+                                    }
+                                    _ => None,
+                                },
+                                GlycanSubstituentLeavingGroup::Hydroxy,
+                            ),
+                        ));
+                    }
+                    &[MAPSymbol::Star(None), MAPSymbol::Element(Element::Cl)] => {
+                        res.substituents.push((
+                            GlycanSubstituent::Element(Element::Cl),
+                            GlycanSubstituentLocation::Single(
+                                match m.lips[0] {
+                                    LIPOption::Known(Lip { position, .. }) => {
+                                        position.and_then(NonZeroU8::new)
+                                    }
+                                    _ => None,
+                                },
+                                GlycanSubstituentLeavingGroup::Hydroxy,
+                            ),
+                        ));
+                    }
+                    &[MAPSymbol::Star(None), MAPSymbol::Element(Element::Br)] => {
+                        res.substituents.push((
+                            GlycanSubstituent::Element(Element::Br),
+                            GlycanSubstituentLocation::Single(
+                                match m.lips[0] {
+                                    LIPOption::Known(Lip { position, .. }) => {
+                                        position.and_then(NonZeroU8::new)
+                                    }
+                                    _ => None,
+                                },
+                                GlycanSubstituentLeavingGroup::Hydroxy,
+                            ),
+                        ));
+                    }
+                    n if n == parse_map(b"*OC") => {
+                        res.substituents.push((
+                            GlycanSubstituent::Methyl,
+                            GlycanSubstituentLocation::Single(
+                                match m.lips[0] {
+                                    LIPOption::Known(Lip { position, .. }) => {
+                                        position.and_then(NonZeroU8::new)
+                                    }
+                                    _ => None,
+                                },
+                                GlycanSubstituentLeavingGroup::Hydroxy,
+                            ),
+                        ));
+                    }
+                    // *OPO/3O/3=O
+                    &[
+                        MAPSymbol::Star(None),
+                        MAPSymbol::Element(Element::O),
+                        MAPSymbol::Element(Element::P),
+                        MAPSymbol::Element(Element::O),
+                        MAPSymbol::Branch(3),
+                        MAPSymbol::Element(Element::O),
+                        MAPSymbol::Branch(3),
+                        MAPSymbol::DoubleBond,
+                        MAPSymbol::Element(Element::O),
+                    ] => res.substituents.push((
+                        GlycanSubstituent::Phosphate,
+                        GlycanSubstituentLocation::Single(
+                            match m.lips[0] {
+                                LIPOption::Known(Lip { position, .. }) => {
+                                    position.and_then(NonZeroU8::new)
+                                }
+                                _ => None,
+                            },
+                            GlycanSubstituentLeavingGroup::Hydroxy,
+                        ),
+                    )),
+                    //*NSO/3=O/3=O
+                    &[
+                        MAPSymbol::Star(None),
+                        MAPSymbol::Element(Element::N),
+                        MAPSymbol::Element(Element::S),
+                        MAPSymbol::Element(Element::O),
+                        MAPSymbol::Branch(3),
+                        MAPSymbol::Element(Element::O),
+                        MAPSymbol::Branch(3),
+                        MAPSymbol::DoubleBond,
+                        MAPSymbol::Element(Element::O),
+                    ] => res.substituents.push((
+                        GlycanSubstituent::Sulfate,
+                        GlycanSubstituentLocation::Single(
+                            match m.lips[0] {
+                                LIPOption::Known(Lip { position, .. }) => {
+                                    position.and_then(NonZeroU8::new)
+                                }
+                                _ => None,
+                            },
+                            GlycanSubstituentLeavingGroup::Hydroxy,
+                        ),
+                    )),
+                    //*OSO/3=O/3=O, TODO: fix with N linked above
+                    &[
+                        MAPSymbol::Star(None),
+                        MAPSymbol::Element(Element::O),
+                        MAPSymbol::Element(Element::S),
+                        MAPSymbol::Element(Element::O),
+                        MAPSymbol::Branch(3),
+                        MAPSymbol::Element(Element::O),
+                        MAPSymbol::Branch(3),
+                        MAPSymbol::DoubleBond,
+                        MAPSymbol::Element(Element::O),
+                    ] => res.substituents.push((
+                        GlycanSubstituent::Sulfate,
+                        GlycanSubstituentLocation::Single(
+                            match m.lips[0] {
+                                LIPOption::Known(Lip { position, .. }) => {
+                                    position.and_then(NonZeroU8::new)
+                                }
+                                _ => None,
+                            },
+                            GlycanSubstituentLeavingGroup::Hydroxy,
+                        ),
+                    )),
                     other => {
-                        dbg!(other);
+                        // /dbg!(other);
                         // todo!()
                     }
                 }
@@ -268,6 +562,30 @@ impl Residue {
         }
         Ok(res)
     }
+}
+
+const fn parse_map<const N: usize>(def: &[u8; N]) -> [MAPSymbol; N] {
+    let mut res = [MAPSymbol::Star(None); N];
+    let mut index = 0;
+    loop {
+        if index == N {
+            break;
+        }
+        res[index] = match def[index] {
+            b'*' => MAPSymbol::Star(None),
+            b'C' => MAPSymbol::Element(Element::C),
+            b'O' => MAPSymbol::Element(Element::O),
+            b'F' => MAPSymbol::Element(Element::F),
+            b'I' => MAPSymbol::Element(Element::I),
+            b'H' => MAPSymbol::Element(Element::H),
+            b'S' => MAPSymbol::Element(Element::S),
+            b'N' => MAPSymbol::Element(Element::N),
+            b'=' => MAPSymbol::DoubleBond,
+            _ => panic!("Unknown MAP symbol"),
+        };
+        index += 1;
+    }
+    res
 }
 
 #[cfg(test)]
@@ -543,7 +861,7 @@ mod tests {
                 "<p>Pairs</p><ol>{}</ol>",
                 pairs
                     .iter()
-                    .map(|(a, b, c, d)| format!("<li>{a}: {b} vs {c}: {d}</li>"))
+                    .map(|(a, b, c, d, e, f)| format!("<li>{a}: {b} {c} vs {d}: {e} {f}</li>"))
                     .collect::<String>()
             )
             .unwrap();
@@ -555,17 +873,83 @@ mod tests {
     fn connect_trees(
         a: &GlycanStructure,
         b: &GlycanStructure,
-        pairs: &mut Vec<(String, String, String, String)>,
+        pairs: &mut Vec<(String, String, String, String, String, String)>,
     ) {
         pairs.push((
             a.sugar.source_field.clone(),
             a.sugar.to_string(),
+            a.sugar.iupac_condensed_name(),
             b.sugar.source_field.clone(),
             b.sugar.to_string(),
+            b.sugar.iupac_condensed_name(),
         ));
         a.branches
             .iter()
             .zip(b.branches.iter())
             .for_each(|(a, b)| connect_trees(a, b, pairs));
     }
+
+    #[test]
+    fn gnome_csv() {
+        use std::io::Write;
+
+        use itertools::Itertools;
+
+        let mut output = std::io::BufWriter::new(
+            std::fs::File::create("/home/douwe/src/mzcore/glycan_test.csv").unwrap(),
+        );
+
+        let mut pairs = Vec::new();
+
+        for line in
+            crate::csv::parse_csv("/home/douwe/.local/share/mzcore/GNOme.csv", b',', None).unwrap()
+        {
+            let line = line.unwrap();
+
+            let id = line.index_column("Accession Number").map(|(id, _)| id).unwrap();
+            println!("{id}");
+            let iupac =
+                line.index_column("IUPAC Condensed")
+                    .ok()
+                    .filter(|i| !i.0.is_empty())
+                    .map(|i| {
+                        GlycanStructure::from_short_iupac(
+                            line.line(),
+                            i.1.clone(),
+                            line.line_index as u32,
+                        )
+                        .unwrap()
+                    });
+            let wurcs = line
+                .index_column("WURCS")
+                .ok()
+                .filter(|i| !i.0.is_empty())
+                .map(|i| tokenise_wurcs(line.line(), &line.full_context(), i.1.clone()))
+                .unwrap()
+                .unwrap();
+            if let Ok(wurcs_tree) = wurcs.parse()
+                && let Some(iupac_tree) = iupac
+            {
+                connect_trees(&wurcs_tree, &iupac_tree, &mut pairs);
+            }
+        }
+
+        writeln!(
+            &mut output,
+            "WURCS,WURCS_parsed,WURCS_iupac,IUPAC,IUPAC_parsed, IUPAC_iupac"
+        )
+        .unwrap();
+        for (a, b, c, d, e, f) in pairs.into_iter().unique().sorted_unstable() {
+            writeln!(
+                &mut output,
+                "\"{a}\",\"{b}\",\"{c}\",\"{d}\",\"{e}\",\"{f}\""
+            )
+            .unwrap();
+        }
+    }
 }
+
+// Weird mods:
+// G01966WQ,"L-Oli3CNMe(a1-2)Glc(b1-","WURCS=2.0/2,2,1/[a2122h-1b_1-5][ad611m-1a_1-5_3*C_3*N]/1-2/
+// a2-b1",323.16 G05810QW,"IdoNAc1N5CN(a1-","WURCS=2.0/1,1,0/[a2125h-1a_1-5_1*N_2*NCC/3=O_5*N]/1/",?
+// G06296QB,"L-Oli3CNMe(a1-","WURCS=2.0/1,1,0/[ad611m-1a_1-5_3*C_3*N]/1/",?
