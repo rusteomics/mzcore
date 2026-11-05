@@ -665,6 +665,8 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Vec<&'static str>, MonoSaccha
                 .into(),
                 furanose: false,
                 configuration: None,
+                #[cfg(debug_assertions)]
+                source_field: String::new(),
             }),
             (vec!["Sulfate"], MonoSaccharide {
                 base_sugar: BaseSugar::Custom(Box::default()),
@@ -675,24 +677,32 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Vec<&'static str>, MonoSaccha
                 .into(),
                 furanose: false,
                 configuration: None,
+                #[cfg(debug_assertions)]
+                source_field: String::new(),
             }),
             (vec!["Sug"], MonoSaccharide {
                 base_sugar: BaseSugar::Sugar,
                 substituents: ThinVec::new(),
                 furanose: false,
                 configuration: None,
+                #[cfg(debug_assertions)]
+                source_field: String::new(),
             }),
             (vec!["Tri"], MonoSaccharide {
                 base_sugar: BaseSugar::Triose,
                 substituents: ThinVec::new(),
                 furanose: false,
                 configuration: None,
+                #[cfg(debug_assertions)]
+                source_field: String::new(),
             }),
             (vec!["Tet"], MonoSaccharide {
                 base_sugar: BaseSugar::Tetrose(None),
                 substituents: ThinVec::new(),
                 furanose: false,
                 configuration: None,
+                #[cfg(debug_assertions)]
+                source_field: String::new(),
             }),
             (
                 vec!["Pent", "Pen", "Rib", "Ara", "Xyl", "Lyx"],
@@ -701,6 +711,8 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Vec<&'static str>, MonoSaccha
                     substituents: ThinVec::new(),
                     furanose: false,
                     configuration: None,
+                    #[cfg(debug_assertions)]
+                    source_field: String::new(),
                 },
             ),
             (
@@ -720,6 +732,8 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Vec<&'static str>, MonoSaccha
                     .into(),
                     furanose: false,
                     configuration: None,
+                    #[cfg(debug_assertions)]
+                    source_field: String::new(),
                 },
             ),
             (vec!["en,a-Hex", "en,aHex"], MonoSaccharide {
@@ -750,6 +764,8 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Vec<&'static str>, MonoSaccha
                 .into(),
                 furanose: false,
                 configuration: None,
+                #[cfg(debug_assertions)]
+                source_field: String::new(),
             }),
             (vec!["d-Hex", "dHex"], MonoSaccharide {
                 base_sugar: BaseSugar::Hexose(None),
@@ -760,6 +776,8 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Vec<&'static str>, MonoSaccha
                 .into(),
                 furanose: false,
                 configuration: None,
+                #[cfg(debug_assertions)]
+                source_field: String::new(),
             }),
             (vec!["HexNAc(S)", "HexNAcS"], MonoSaccharide {
                 base_sugar: BaseSugar::Hexose(None),
@@ -782,6 +800,8 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Vec<&'static str>, MonoSaccha
                 .into(),
                 furanose: false,
                 configuration: None,
+                #[cfg(debug_assertions)]
+                source_field: String::new(),
             }),
             (
                 vec![
@@ -800,6 +820,8 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Vec<&'static str>, MonoSaccha
                     .into(),
                     furanose: false,
                     configuration: None,
+                    #[cfg(debug_assertions)]
+                    source_field: String::new(),
                 },
             ),
             (vec!["VioNAc"], MonoSaccharide {
@@ -830,6 +852,8 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Vec<&'static str>, MonoSaccha
                 .into(),
                 furanose: false,
                 configuration: None,
+                #[cfg(debug_assertions)]
+                source_field: String::new(),
             }),
             (vec!["Vio"], MonoSaccharide {
                 base_sugar: BaseSugar::Hexose(Some(HexoseIsomer::Glucose)),
@@ -859,6 +883,8 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Vec<&'static str>, MonoSaccha
                 .into(),
                 furanose: false,
                 configuration: None,
+                #[cfg(debug_assertions)]
+                source_field: String::new(),
             }),
             (vec!["HexNS"], MonoSaccharide {
                 base_sugar: BaseSugar::Hexose(None),
@@ -881,6 +907,8 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Vec<&'static str>, MonoSaccha
                 .into(),
                 furanose: false,
                 configuration: None,
+                #[cfg(debug_assertions)]
+                source_field: String::new(),
             }),
             (vec!["HexN"], MonoSaccharide {
                 base_sugar: BaseSugar::Hexose(None),
@@ -891,6 +919,8 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Vec<&'static str>, MonoSaccha
                 .into(),
                 furanose: false,
                 configuration: None,
+                #[cfg(debug_assertions)]
+                source_field: String::new(),
             }),
             (vec!["HexS"], MonoSaccharide {
                 base_sugar: BaseSugar::Hexose(None),
@@ -901,6 +931,8 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Vec<&'static str>, MonoSaccha
                 .into(),
                 furanose: false,
                 configuration: None,
+                #[cfg(debug_assertions)]
+                source_field: String::new(),
             }),
             (vec!["HexP"], MonoSaccharide {
                 base_sugar: BaseSugar::Hexose(None),
@@ -911,6 +943,8 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Vec<&'static str>, MonoSaccha
                 .into(),
                 furanose: false,
                 configuration: None,
+                #[cfg(debug_assertions)]
+                source_field: String::new(),
             }),
             (
                 vec![
@@ -921,6 +955,8 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Vec<&'static str>, MonoSaccha
                     substituents: ThinVec::new(),
                     furanose: false,
                     configuration: None,
+                    #[cfg(debug_assertions)]
+                    source_field: String::new(),
                 },
             ),
             (vec!["Hep"], MonoSaccharide {
@@ -928,12 +964,16 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Vec<&'static str>, MonoSaccha
                 substituents: ThinVec::new(),
                 furanose: false,
                 configuration: None,
+                #[cfg(debug_assertions)]
+                source_field: String::new(),
             }),
             (vec!["Oct"], MonoSaccharide {
                 base_sugar: BaseSugar::Octose,
                 substituents: ThinVec::new(),
                 furanose: false,
                 configuration: None,
+                #[cfg(debug_assertions)]
+                source_field: String::new(),
             }),
             (vec!["Kdo"], MonoSaccharide {
                 base_sugar: BaseSugar::Octose,
@@ -956,12 +996,16 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Vec<&'static str>, MonoSaccha
                 .into(),
                 furanose: false,
                 configuration: None,
+                #[cfg(debug_assertions)]
+                source_field: String::new(),
             }),
             (vec!["Non"], MonoSaccharide {
                 base_sugar: BaseSugar::Nonose(None),
                 substituents: ThinVec::new(),
                 furanose: false,
                 configuration: None,
+                #[cfg(debug_assertions)]
+                source_field: String::new(),
             }),
             (vec!["Kdn"], MonoSaccharide {
                 base_sugar: BaseSugar::Nonose(Some(NonoseIsomer::Kdn)),
@@ -991,6 +1035,8 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Vec<&'static str>, MonoSaccha
                 .into(),
                 furanose: false,
                 configuration: None,
+                #[cfg(debug_assertions)]
+                source_field: String::new(),
             }),
             (vec!["Sia"], MonoSaccharide {
                 base_sugar: BaseSugar::Nonose(None),
@@ -1020,12 +1066,16 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Vec<&'static str>, MonoSaccha
                 .into(),
                 furanose: false,
                 configuration: None,
+                #[cfg(debug_assertions)]
+                source_field: String::new(),
             }),
             (vec!["Dec"], MonoSaccharide {
                 base_sugar: BaseSugar::Decose,
                 substituents: ThinVec::new(),
                 furanose: false,
                 configuration: None,
+                #[cfg(debug_assertions)]
+                source_field: String::new(),
             }),
             (vec!["Neu5Ac", "NeuAc"], MonoSaccharide {
                 base_sugar: BaseSugar::Nonose(None),
@@ -1055,6 +1105,8 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Vec<&'static str>, MonoSaccha
                 .into(),
                 furanose: false,
                 configuration: None,
+                #[cfg(debug_assertions)]
+                source_field: String::new(),
             }),
             (vec!["Neu5Gc", "NeuGc"], MonoSaccharide {
                 base_sugar: BaseSugar::Nonose(None),
@@ -1084,6 +1136,8 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Vec<&'static str>, MonoSaccha
                 .into(),
                 furanose: false,
                 configuration: None,
+                #[cfg(debug_assertions)]
+                source_field: String::new(),
             }),
             (vec!["Neu"], MonoSaccharide {
                 base_sugar: BaseSugar::Nonose(None),
@@ -1113,6 +1167,8 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Vec<&'static str>, MonoSaccha
                 .into(),
                 furanose: false,
                 configuration: None,
+                #[cfg(debug_assertions)]
+                source_field: String::new(),
             }),
             (vec!["Fuc"], MonoSaccharide {
                 base_sugar: BaseSugar::Hexose(Some(HexoseIsomer::Galactose)),
@@ -1123,12 +1179,16 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Vec<&'static str>, MonoSaccha
                 .into(),
                 furanose: false,
                 configuration: None,
+                #[cfg(debug_assertions)]
+                source_field: String::new(),
             }),
             (vec!["Xxx"], MonoSaccharide {
                 base_sugar: BaseSugar::Custom(Box::default()),
                 substituents: ThinVec::new(),
                 furanose: false,
                 configuration: None,
+                #[cfg(debug_assertions)]
+                source_field: String::new(),
             }),
             (vec!["Aldi"], MonoSaccharide {
                 base_sugar: BaseSugar::Custom(Box::default()),
@@ -1139,6 +1199,8 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Vec<&'static str>, MonoSaccha
                 .into(),
                 furanose: false,
                 configuration: None,
+                #[cfg(debug_assertions)]
+                source_field: String::new(),
             }),
             (vec!["Me"], MonoSaccharide {
                 base_sugar: BaseSugar::Custom(Box::default()),
@@ -1149,6 +1211,8 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Vec<&'static str>, MonoSaccha
                 .into(),
                 furanose: false,
                 configuration: None,
+                #[cfg(debug_assertions)]
+                source_field: String::new(),
             }),
             // Single letter codes, by defining them like this they will be read but exported to
             // the standard ProForma codes
@@ -1161,12 +1225,16 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Vec<&'static str>, MonoSaccha
                 .into(),
                 furanose: false,
                 configuration: None,
+                #[cfg(debug_assertions)]
+                source_field: String::new(),
             }),
             (vec!["H"], MonoSaccharide {
                 base_sugar: BaseSugar::Hexose(None),
                 substituents: ThinVec::new(),
                 furanose: false,
                 configuration: None,
+                #[cfg(debug_assertions)]
+                source_field: String::new(),
             }),
             (vec!["N"], MonoSaccharide {
                 base_sugar: BaseSugar::Hexose(None),
@@ -1177,6 +1245,8 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Vec<&'static str>, MonoSaccha
                 .into(),
                 furanose: false,
                 configuration: None,
+                #[cfg(debug_assertions)]
+                source_field: String::new(),
             }),
             (vec!["F"], MonoSaccharide {
                 base_sugar: BaseSugar::Hexose(Some(HexoseIsomer::Galactose)),
@@ -1187,6 +1257,8 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Vec<&'static str>, MonoSaccha
                 .into(),
                 furanose: false,
                 configuration: None,
+                #[cfg(debug_assertions)]
+                source_field: String::new(),
             }),
             (vec!["S", "A"], MonoSaccharide {
                 base_sugar: BaseSugar::Nonose(None),
@@ -1216,6 +1288,8 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Vec<&'static str>, MonoSaccha
                 .into(),
                 furanose: false,
                 configuration: None,
+                #[cfg(debug_assertions)]
+                source_field: String::new(),
             }),
             (vec!["G"], MonoSaccharide {
                 base_sugar: BaseSugar::Nonose(None),
@@ -1245,6 +1319,8 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Vec<&'static str>, MonoSaccha
                 .into(),
                 furanose: false,
                 configuration: None,
+                #[cfg(debug_assertions)]
+                source_field: String::new(),
             }),
             (vec!["X"], MonoSaccharide {
                 base_sugar: BaseSugar::Custom(Box::default()),
@@ -1255,6 +1331,8 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Vec<&'static str>, MonoSaccha
                 .into(),
                 furanose: false,
                 configuration: None,
+                #[cfg(debug_assertions)]
+                source_field: String::new(),
             }),
         ]
     });

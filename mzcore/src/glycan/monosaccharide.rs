@@ -26,6 +26,8 @@ pub struct MonoSaccharide {
     pub(super) substituents: ThinVec<(GlycanSubstituent, GlycanSubstituentLocation)>,
     pub(super) furanose: bool,
     pub(super) configuration: Option<Configuration>,
+    #[cfg(debug_assertions)]
+    pub(super) source_field: String,
 }
 
 impl Molecule for MonoSaccharide {
@@ -167,6 +169,8 @@ impl ParseJson for MonoSaccharide {
                         context(&map),
                     )
                 })?)?,
+                #[cfg(debug_assertions)]
+                source_field: String::new(),
             })
         } else {
             Err(BoxedError::new(
@@ -477,6 +481,8 @@ impl MonoSaccharide {
             substituents: substituents.iter().copied().sorted().collect(),
             furanose: false,
             configuration: None,
+            #[cfg(debug_assertions)]
+            source_field: String::new(),
         }
     }
 

@@ -17,6 +17,8 @@ pub(super) struct Residue {
     pub backbone: BackBone,
     pub anomeric: Option<(Option<u8>, AnomericSymbol)>,
     pub mods: Vec<Mod>,
+    #[cfg(debug_assertions)]
+    pub source_field: String,
 }
 
 impl Residue {

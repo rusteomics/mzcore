@@ -610,6 +610,8 @@ fn tokenise_unique_res<'a>(
                 backbone: BackBone::Repeating(start, backbone, skeleton_end),
                 anomeric,
                 mods,
+                #[cfg(debug_assertions)]
+                source_field: value[index + 1..index + offset].to_string(),
             }))
         } else {
             let Some(start) = start else {
@@ -643,6 +645,8 @@ fn tokenise_unique_res<'a>(
                 backbone: BackBone::Defined(start, backbone, skeleton_end),
                 anomeric,
                 mods,
+                #[cfg(debug_assertions)]
+                source_field: value[index + 1..index + offset].to_string(),
             }))
         }
     } else {

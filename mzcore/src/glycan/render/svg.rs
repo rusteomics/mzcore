@@ -1,4 +1,4 @@
-use std::fmt::Write;
+use std::io::Write;
 
 use itertools::Itertools;
 
@@ -13,7 +13,7 @@ impl RenderedGlycan {
     ///
     /// # Errors
     /// If the underlying buffer errors the error is returned.
-    pub fn to_svg(&self, mut output: impl Write) -> Result<(), std::fmt::Error> {
+    pub fn to_svg(&self, mut output: impl Write) -> Result<(), std::io::Error> {
         fn clr(clr: Option<&[u8; 3]>) -> String {
             if let Some([r, g, b]) = clr {
                 format!("rgb({r},{g},{b})")

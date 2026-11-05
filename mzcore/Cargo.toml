@@ -41,7 +41,7 @@ paste = { workspace = true }
 png = { workspace = true }
 
 [features]
-default = []
+default = ["glycan-render"]
 isotopes = ["dep:probability", "dep:ndarray"]
 glycan-render = []
 glycan-render-bitmap = ["dep:zeno", "dep:swash", "glycan-render"]

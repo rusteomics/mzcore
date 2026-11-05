@@ -277,6 +277,8 @@ impl MonoSaccharide {
                     substituents: substituents.into(),
                     furanose: false,
                     configuration,
+                    #[cfg(debug_assertions)]
+                    source_field: String::new(),
                 };
                 alo.substituents.extend_from_slice(s);
                 alo
@@ -401,6 +403,10 @@ impl MonoSaccharide {
             index += line[index..].ignore(&["?"]); // I guess to indicate partial structures
         }
         sugar.substituents.sort();
+        #[cfg(debug_assertions)]
+        {
+            sugar.source_field = line[start..index].to_string();
+        }
         Ok((sugar, index))
     }
 
