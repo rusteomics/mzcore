@@ -370,10 +370,18 @@ impl MolecularFormula {
 
     /// Set the charge. Only changes the number of electrons.
     pub fn set_charge(&mut self, charge: crate::system::isize::Charge) {
-        if let Some(el) = self.elements.iter_mut().find(|e| e.0 == Element::Electron) {
-            el.2 = -charge.value as i32;
+        // Remove the electrons if set to 0
+        if charge.value == 0 {
+            self.elements
+                .retain(|el: &(Element, Option<std::num::NonZero<u16>>, i32)| {
+                    el.0 != Element::Electron
+                });
         } else {
-            self.elements.push((Element::Electron, None, -charge.value as i32));
+            if let Some(el) = self.elements.iter_mut().find(|e| e.0 == Element::Electron) {
+                el.2 = -charge.value as i32;
+            } else {
+                self.elements.push((Element::Electron, None, -charge.value as i32));
+            }
         }
     }
 
@@ -754,10 +762,14 @@ pub enum SatelliteLabel {
 
 impl std::fmt::Display for SatelliteLabel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", match self {
-            Self::None => "",
-            Self::A => "a",
-            Self::B => "b",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::None => "",
+                Self::A => "a",
+                Self::B => "b",
+            }
+        )
     }
 }
