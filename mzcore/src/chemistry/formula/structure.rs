@@ -762,14 +762,10 @@ pub enum SatelliteLabel {
 
 impl std::fmt::Display for SatelliteLabel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::None => "",
-                Self::A => "a",
-                Self::B => "b",
-            }
-        )
+        write!(f, "{}", match self {
+            Self::None => "",
+            Self::A => "a",
+            Self::B => "b",
+        })
     }
 }
