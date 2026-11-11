@@ -187,7 +187,7 @@ impl PSMMetaData for SagePSM {
     fn original_confidence(&self) -> Option<(f64, mzcv::Term)> {
         Some((
             self.sage_discriminant_score,
-            mzcv::term!(MS:1001153|search engine specific score),
+            mzcv::term!(MS:1004047|Sage:discriminant score),
         ))
     }
 
@@ -196,12 +196,23 @@ impl PSMMetaData for SagePSM {
     }
 
     fn other_scores(&self) -> Option<Cow<'_, [(f64, mzcv::Term)]>> {
-        // TODO: add here when PR is merged: delta_next, delta best, poisson, and term for
-        // discriminant + better term for PEP
         Some(Cow::Owned(vec![
-            (self.posterior_error, mzcv::term!(MS:1001493|percolator:PEP)),
+            (
+                self.posterior_error,
+                mzcv::term!(MS:1004052|PSM-level posterior error probability),
+            ),
             (self.spectrum_q, mzcv::term!(MS:1002354|PSM-level q-value)),
             (self.hyperscore, mzcv::term!(MS:1001331|X!Tandem:hyperscore)),
+            (self.poisson, mzcv::term!(MS:1004046|Sage:Poisson score)),
+            (
+                self.delta_next,
+                mzcv::term!(MS:1004048|Sage:delta hyperscore next),
+            ),
+            (
+                self.delta_best,
+                mzcv::term!(MS:1004049|Sage:delta hyperscore best),
+            ),
+            (self.rank as f64, mzcv::term!(MS:1004050|PSM-level rank)),
             (
                 self.matched_intensity_pct.get::<mzcore::system::ratio::fraction>(),
                 mzcv::term!(MS:1003166|assigned intensity fraction),

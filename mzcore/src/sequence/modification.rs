@@ -326,8 +326,8 @@ pub enum CrossId {
     GO(AccessionCode),
     /// A deltamass ID
     Deltamass(usize),
-    /// A digital object identifier '10.<num>/<string>'
-    DOI(usize, Box<str>),
+    /// A digital object identifier '10.<num>/<string>' or '10/<string>' for a shortDOI, in which case the string is checked to be exactly 5 characters and all ASCII lowercase
+    DOI(Option<usize>, Box<str>),
     /// A findmod ID
     Findmod(Box<str>),
     /// An MDL chemical database ID
@@ -442,34 +442,66 @@ impl TryFrom<(Option<Box<str>>, Box<str>)> for CrossId {
             Some("chemicalbookno") => Self::ChemicalBook(value.1),
             Some("come") => Self::COMe(value.1),
             Some("doi") => {
-                let Some((n, t)) = value
-                    .1
-                    .trim_start_matches("https://doi.org/")
-                    .trim_start_matches("https://pubs.acs.org/doi/")
-                    .split_once('/')
-                else {
-                    return Err(BoxedError::new(
-                        BasicKind::Error,
-                        "Invalid DOI",
-                        "Missing slash",
-                        Context::default().lines(0, value.1.to_string()),
-                    ));
-                };
-                let Some(n) = n.strip_prefix("10.") else {
-                    return Err(BoxedError::new(
-                        BasicKind::Error,
-                        "Invalid DOI",
-                        "Missing '10.' at the start",
-                        Context::default().lines(0, value.1.to_string()),
-                    ));
-                };
-                match n.parse() {
-                    Ok(v) => Self::DOI(v, t.into()),
-                    Err(err) => {
+                if let Some(s) = value.1.strip_prefix("https://doi.org/")
+                    && s.len() == 5
+                    && s.chars().all(|c| c.is_ascii_lowercase())
+                {
+                    // Detect short DOI URLs
+                    Self::DOI(None, s.into())
+                } else {
+                    let Some((n, t)) = value
+                        .1
+                        .trim_start_matches("https://doi.org/")
+                        .trim_start_matches("https://pubs.acs.org/doi/")
+                        .split_once('/')
+                    else {
                         return Err(BoxedError::new(
                             BasicKind::Error,
                             "Invalid DOI",
-                            format!("The DOI identifier number {}", explain_number_error(&err)),
+                            "Missing slash",
+                            Context::default().lines(0, value.1.to_string()),
+                        ));
+                    };
+                    if let Some(n) = n.strip_prefix("10") {
+                        if let Some(n) = n.strip_prefix(".") {
+                            match n.parse() {
+                                Ok(v) => Self::DOI(Some(v), t.into()),
+                                Err(err) => {
+                                    return Err(BoxedError::new(
+                                        BasicKind::Error,
+                                        "Invalid DOI",
+                                        format!(
+                                            "The DOI identifier number {}",
+                                            explain_number_error(&err)
+                                        ),
+                                        Context::default().lines(0, value.1.to_string()),
+                                    ));
+                                }
+                            }
+                        } else if n.is_empty() {
+                            if t.len() == 5 && t.chars().all(|c| c.is_ascii_lowercase()) {
+                                Self::DOI(None, t.into())
+                            } else {
+                                return Err(BoxedError::new(
+                                    BasicKind::Error,
+                                    "Invalid shortDOI",
+                                    "A short DOI can only have 5 lowercase alphabetic characters.",
+                                    Context::default().lines(0, value.1.to_string()),
+                                ));
+                            }
+                        } else {
+                            return Err(BoxedError::new(
+                                BasicKind::Error,
+                                "Invalid DOI",
+                                "A DOI has to be of shape '10.<n>/<s>' or '10/<s>' but the '.' was missing for a regular DOI and there are too many characters for a short DOI.",
+                                Context::default().lines(0, value.1.to_string()),
+                            ));
+                        }
+                    } else {
+                        return Err(BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid DOI",
+                            "A DOI has to be of shape '10.<n>/<s>' or '10/<s>' but the '10' is missing.",
                             Context::default().lines(0, value.1.to_string()),
                         ));
                     }
@@ -722,7 +754,8 @@ impl Display for CrossId {
             Self::ChemSpider(a) => write!(f, "ChemSpider:{a}"),
             Self::COMe(a) => write!(f, "COMe:{a}"),
             Self::Deltamass(a) => write!(f, "DeltaMass:{a}"),
-            Self::DOI(a, b) => write!(f, "DOI:10.{a}/{b}"),
+            Self::DOI(Some(a), b) => write!(f, "DOI:10.{a}/{b}"),
+            Self::DOI(None, b) => write!(f, "DOI:10/{b}"),
             Self::EC(a, b, c, d, preliminary) => write!(
                 f,
                 "EC:{a}.{b}.{c}.{}{d}",
@@ -794,7 +827,8 @@ impl CrossId {
             Self::ChemSpider(a) => (Some("ChemSpider"), Cow::Owned(a.to_string())),
             Self::COMe(a) => (Some("COMe"), Cow::Borrowed(a)),
             Self::Deltamass(a) => (Some("DeltaMass"), Cow::Owned(a.to_string())),
-            Self::DOI(a, b) => (Some("DOI"), Cow::Owned(format!("10.{a}/{b}"))),
+            Self::DOI(Some(a), b) => (Some("DOI"), Cow::Owned(format!("10.{a}/{b}"))),
+            Self::DOI(None, b) => (Some("DOI"), Cow::Owned(format!("10/{b}"))),
             Self::EC(a, b, c, d, preliminary) => (
                 Some("EC"),
                 Cow::Owned(format!(
@@ -832,7 +866,8 @@ impl CrossId {
             Self::ChemSpider(a) => Some(format!(
                 "https://www.chemspider.com/Chemical-Structure.{a}.html"
             )),
-            Self::DOI(a, b) => Some(format!("https://doi.org/10.{a}/{b}")),
+            Self::DOI(Some(a), b) => Some(format!("https://doi.org/10.{a}/{b}")),
+            Self::DOI(None, b) => Some(format!("https://doi.org/{b}")),
             Self::EC(a, b, c, d, _p) => Some(format!(
                 "https://iubmb.qmul.ac.uk/enzyme/EC{a}/{b}/{c}/{d}.html"
             )), //TODO: not sure how the preliminary works here
