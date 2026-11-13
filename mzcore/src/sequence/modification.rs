@@ -443,8 +443,7 @@ impl TryFrom<(Option<Box<str>>, Box<str>)> for CrossId {
             Some("come") => Self::COMe(value.1),
             Some("doi") => {
                 if let Some(s) = value.1.strip_prefix("https://doi.org/")
-                    && s.len() == 5
-                    && s.chars().all(|c| c.is_ascii_lowercase())
+                    && s.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
                 {
                     // Detect short DOI URLs
                     Self::DOI(None, s.into())
@@ -479,13 +478,13 @@ impl TryFrom<(Option<Box<str>>, Box<str>)> for CrossId {
                                 }
                             }
                         } else if n.is_empty() {
-                            if t.len() == 5 && t.chars().all(|c| c.is_ascii_lowercase()) {
+                            if t.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit()) {
                                 Self::DOI(None, t.into())
                             } else {
                                 return Err(BoxedError::new(
                                     BasicKind::Error,
                                     "Invalid shortDOI",
-                                    "A short DOI can only have 5 lowercase alphabetic characters.",
+                                    "A short DOI can only have lowercase alphabetic or digits.",
                                     Context::default().lines(0, value.1.to_string()),
                                 ));
                             }
