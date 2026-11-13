@@ -326,7 +326,8 @@ pub enum CrossId {
     GO(AccessionCode),
     /// A deltamass ID
     Deltamass(usize),
-    /// A digital object identifier '10.<num>/<string>' or '10/<string>' for a shortDOI, in which case the string is checked to be exactly 5 characters and all ASCII lowercase
+    /// A digital object identifier '10.<num>/<string>' or '10/<string>' for a shortDOI, in which
+    /// case the string is checked to be exactly 5 characters and all ASCII lowercase
     DOI(Option<usize>, Box<str>),
     /// A findmod ID
     Findmod(Box<str>),
