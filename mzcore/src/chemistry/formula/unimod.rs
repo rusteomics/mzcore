@@ -25,7 +25,7 @@ fn parse_unimod_composition_brick(
         "kdn" => Ok(Brick::Formula(molecular_formula!(C 9 H 14 O 8))),
         "kdo" => Ok(Brick::Formula(molecular_formula!(C 8 H 12 O 7))),
         "sulf" => Ok(Brick::Formula(molecular_formula!(S 1 O 3))),
-        "phos" => Ok(Brick::Formula(molecular_formula!(P 1 O 3))),
+        "phos" => Ok(Brick::Formula(molecular_formula!(H 1 P 1 O 3))),
         "water" => Ok(Brick::Formula(molecular_formula!(H 2 O 1))),
         _ => Element::try_from(text[range.clone()].to_lowercase().as_str()).map_or_else(
             |()| {
