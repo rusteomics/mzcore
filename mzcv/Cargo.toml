@@ -15,7 +15,7 @@ include = ["src/**/*", "tests/**/*", "examples/**/*", "README.md"]
 
 [dependencies]
 bincode = { workspace = true }
-chrono = { workspace = true }
+jiff = { workspace = true }
 context_error = { workspace = true }
 directories = { workspace = true }
 flate2 = { workspace = true }

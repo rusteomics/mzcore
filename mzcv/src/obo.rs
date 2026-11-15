@@ -1,7 +1,6 @@
 use std::{collections::HashMap, fmt::Display, fs::File, io::BufReader, path::Path, str::FromStr};
 
 use bincode::{Decode, Encode};
-use chrono::FixedOffset;
 use context_error::{BoxedError, Context, CreateError, ErrorKind};
 use flate2::bufread::GzDecoder;
 
@@ -264,7 +263,7 @@ pub enum OboValue {
     /// A boolean, when the unit is `xsd:boolean`
     Boolean(bool),
     /// A datetime in RFC 3339 format, when the unit is `xsd:dateTime`
-    DateTime(chrono::DateTime<FixedOffset>),
+    DateTime(jiff::Zoned),
 }
 
 impl PartialEq for OboValue {
@@ -323,7 +322,7 @@ impl Display for OboValue {
             }
             Self::Integer(s, _) => write!(f, "{s}"),
             Self::Boolean(s) => write!(f, "{s}"),
-            Self::DateTime(s) => write!(f, "{}", s.to_rfc3339()),
+            Self::DateTime(s) => write!(f, "{s}"),
         }
     }
 }
@@ -354,16 +353,16 @@ impl OboValue {
                 float_digits(value),
             )),
             "xsd:boolean" => Ok(Self::Boolean(value == "true" || value == "1")),
-            "xsd:dateTime" => Ok(Self::DateTime(
-                chrono::DateTime::parse_from_rfc3339(value).map_err(|e| {
+            "xsd:dateTime" => Ok(Self::DateTime(jiff::Zoned::from_str(value).map_err(
+                |e| {
                     BoxedError::new(
                         OboError::InvalidDate,
                         "Could not parse date time",
                         e.to_string(),
                         base_context,
                     )
-                })?,
-            )),
+                },
+            )?)),
             "xsd:integer" | "xsd:int" | "xsd:nonNegativeInteger" | "xsd:positiveInteger" => {
                 Ok(Self::Integer(
                     value.parse::<isize>().map_err(|e| {
