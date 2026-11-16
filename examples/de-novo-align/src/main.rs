@@ -38,8 +38,7 @@ where
     let max = alignments
         .iter()
         .max_by(|a, b| a.normalised_score().total_cmp(&b.normalised_score()))
-        .map(Alignment::normalised_score)
-        .unwrap_or_default();
+        .map_or_default(Alignment::normalised_score);
     let mut alignments = alignments
         .into_iter()
         .filter(|a| (a.normalised_score() - max).abs() < 1E-9)

@@ -17,6 +17,7 @@ use mzcore::{
     system::{MassOverCharge, isize::Charge},
 };
 use mzcv::{AccessionCode, curie, term};
+#[expect(unused_imports)]
 use mzdata::{
     mzpeaks::prelude::PeakCollectionMut,
     params::{ParamValue, Unit, Value},

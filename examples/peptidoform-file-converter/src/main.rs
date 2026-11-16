@@ -29,6 +29,8 @@ struct Cli {
     raw_file: Option<PathBuf>,
 }
 
+/// # Panics
+/// If the output file could not be written to, or writing the mzTab file failed.
 fn main() {
     let args = Cli::parse();
     let out_file =
@@ -158,8 +160,8 @@ fn save_csv<PSM: PSMMetaData>(
                 )
             })
             .unwrap();
-        let charge = psm.charge().map(|v| v.value).unwrap_or_default();
-        let score = psm.original_confidence().map(|(v, _)| v).unwrap_or_default();
+        let charge = psm.charge().map_or_default(|v| v.value);
+        let score = psm.original_confidence().map_or_default(|(v, _)| v);
         let class = psm.proteins().iter().fold("Unkown", |acc, p| {
             if p.id().decoy() && acc != "Target" {
                 "Decoy"

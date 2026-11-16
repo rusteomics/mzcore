@@ -263,7 +263,7 @@ pub enum OboValue {
     /// A boolean, when the unit is `xsd:boolean`
     Boolean(bool),
     /// A datetime in RFC 3339 format, when the unit is `xsd:dateTime`
-    DateTime(jiff::Zoned),
+    DateTime(jiff::Timestamp),
 }
 
 impl PartialEq for OboValue {
@@ -353,7 +353,7 @@ impl OboValue {
                 float_digits(value),
             )),
             "xsd:boolean" => Ok(Self::Boolean(value == "true" || value == "1")),
-            "xsd:dateTime" => Ok(Self::DateTime(jiff::Zoned::from_str(value).map_err(
+            "xsd:dateTime" => Ok(Self::DateTime(jiff::Timestamp::from_str(value).map_err(
                 |e| {
                     BoxedError::new(
                         OboError::InvalidDate,

@@ -724,7 +724,7 @@ fn store_errors(path: &Path, errors: &[BoxedError<'_, CVError>]) -> bool {
         success &= writeln!(
             &mut writer,
             "Time: {}\nPath: {}",
-            jiff::Zoned::now(),
+            jiff::Timestamp::now(),
             path.display()
         )
         .is_ok();
