@@ -318,12 +318,12 @@ impl<const STEPS: u16, Source: HasPeptidoform<Linear> + Clone + Sync + Send>
                 .is_some_and(|(_, t, s)| *t != align_type || *s != scoring)
         {
             let mut matrix = DiagonalArray::<f64, { u16::MAX }>::new(self.sequences.len());
-            for results in (&self)
+            for results in self
                 .sequences
                 .par_iter()
                 .enumerate()
                 .flat_map(|(i, s)| {
-                    (&self)
+                    self
                         .sequences
                         .par_iter()
                         .enumerate()

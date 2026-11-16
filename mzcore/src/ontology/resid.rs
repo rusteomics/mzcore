@@ -328,10 +328,10 @@ impl CVSource for Resid {
                                     }
                                     "Condition" => match rule_node.text().unwrap_or_default() {
                                         "amino-terminal" => {
-                                            rule.2 = Some(ResiduePosition::AnyNTerm)
+                                            rule.2 = Some(ResiduePosition::AnyNTerm);
                                         }
                                         "carboxyl-terminal" => {
-                                            rule.2 = Some(ResiduePosition::AnyCTerm)
+                                            rule.2 = Some(ResiduePosition::AnyCTerm);
                                         }
                                         "carboxamidine" => (),
                                         text if text.starts_with("cross-link")

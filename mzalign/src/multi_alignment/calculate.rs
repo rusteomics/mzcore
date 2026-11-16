@@ -295,7 +295,7 @@ impl<const STEPS: u16, Sequence: HasPeptidoform<Linear> + Clone> AlignIndex<STEP
             )];
         }
 
-        let mut distance_matrix = distance_matrix.clone();
+        let mut distance_matrix = distance_matrix;
 
         let mut nodes = Vec::with_capacity(self.sequences.len());
         for (i, s) in self.sequences.iter().enumerate() {

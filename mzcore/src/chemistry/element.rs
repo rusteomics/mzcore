@@ -814,7 +814,7 @@ pub type ElementalData = Vec<(Option<Mass>, Option<Mass>, Vec<(u16, Mass, f64)>)
 
 impl Element {
     /// Validate this isotope to have a defined mass
-    #[allow(unused_variables)]
+    #[allow(unused_variables, clippy::missing_const_for_fn, clippy::unused_self)]
     pub fn is_valid(self, isotope: Option<NonZeroU16>) -> bool {
         #[cfg(not(feature = "internal-no-data"))]
         {

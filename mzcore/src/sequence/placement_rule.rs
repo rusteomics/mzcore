@@ -280,7 +280,7 @@ impl PlacementRule {
         aa: AminoAcid,
         position: P,
     ) -> bool {
-        rules.iter().any(|r| r.is_possible_aa(aa, position.clone()))
+        rules.iter().any(|r| r.is_possible_aa(aa, position))
     }
 
     /// Check if this rule is a subset of another rule
@@ -367,10 +367,10 @@ impl FromStr for PlacementRule {
                 .map(ThinVec::from)
         };
 
-        match parts.as_slice() {
-            &[aa, mpos, pos] => {
+        match *parts.as_slice() {
+            [aa, mpos, pos] => {
                 let aa_v = parse_aas(0..aa.len())?;
-                let mpos_v = mpos.parse::<ModificationPosition>().map_err(|_| {
+                let mpos_v = mpos.parse::<ModificationPosition>().map_err(|()| {
                     BoxedError::new(
                         BasicKind::Error,
                         "Invalid modification position",
@@ -382,7 +382,7 @@ impl FromStr for PlacementRule {
                             .to_owned(),
                     )
                 })?;
-                let pos_v = pos.parse::<ResiduePosition>().map_err(|_|
+                let pos_v = pos.parse::<ResiduePosition>().map_err(|()|
                     BoxedError::new(
                         BasicKind::Error,
                         "Invalid position",
@@ -395,9 +395,9 @@ impl FromStr for PlacementRule {
                     ))?;
                 Ok(Self::AminoAcid(aa_v, pos_v, mpos_v))
             }
-            &[one, two] => {
+            [one, two] => {
                 // Either AA@pos or mpos@pos
-                let p = two.parse::<ResiduePosition>().map_err(|_|
+                let p = two.parse::<ResiduePosition>().map_err(|()|
                     BoxedError::new(
                         BasicKind::Error,
                         "Invalid position",
@@ -418,24 +418,20 @@ impl FromStr for PlacementRule {
                     ))
                 }
             }
-            &[_] => {
-                if let Ok(position) = s.parse() {
-                    Ok(Self::Position(
+            [_] => {
+                s.parse().map_or_else(|_| Err(BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid position",
+                        "Use any of the following for the position: Anywhere, AnyNTerm, ProteinNTerm, AnyCTerm, ProteinCTerm",
+                        Context::default().line_index(0).lines(0, s).to_owned(),
+                    )), |position| Ok(Self::Position(
                         position,
                         if position == ResiduePosition::Anywhere {
                             ModificationPosition::Sidechain
                         } else {
                             ModificationPosition::Terminal
                         },
-                    ))
-                } else {
-                    Err(BoxedError::new(
-                        BasicKind::Error,
-                        "Invalid position",
-                        "Use any of the following for the position: Anywhere, AnyNTerm, ProteinNTerm, AnyCTerm, ProteinCTerm",
-                        Context::default().line_index(0).lines(0, s).to_owned(),
-                    ))
-                }
+                    )))
             }
             _ => Err(BoxedError::new(
                 BasicKind::Error,

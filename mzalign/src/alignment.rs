@@ -215,7 +215,7 @@ where
                                     0,
                                 )
                                 .iter()
-                                .map(|m| m.mass())
+                                .map(mzcore::chemistry::MassOutput::mass)
                                 .collect();
                             let mass_b = seq_b.cast_peptidoform()[index_b]
                                 .calculate_masses_inner::<OutputMonoIsotopic>(
@@ -227,7 +227,7 @@ where
                                     0,
                                 )
                                 .iter()
-                                .map(|m| m.mass())
+                                .map(mzcore::chemistry::MassOutput::mass)
                                 .collect();
                             let piece = score_pair(
                                 (&seq_a.cast_peptidoform()[index_a], &mass_a),

@@ -472,7 +472,7 @@ impl Gene {
             }
             match tail.strip_prefix('*').map_or_else(
                 || Err(format!("Invalid allele spec: `{tail}`")),
-                |tail| tail.parse().map_err(|_| format!("Invalid allele spec: `{}`", &tail)),
+                |tail| tail.parse().map_err(|_| format!("Invalid allele spec: `{}`", tail)),
             ) {
                 Ok(allele) => return Ok((gene, allele)),
                 Err(err) => {

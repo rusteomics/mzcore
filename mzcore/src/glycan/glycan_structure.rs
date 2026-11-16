@@ -84,7 +84,7 @@ impl GlycanStructure {
             offset = new_offset;
 
             last_branch.branches.push(Self {
-                sugar: sugar.clone(),
+                sugar,
                 branches: ThinVec::new(),
             });
             last_branch = last_branch.branches.last_mut().unwrap();

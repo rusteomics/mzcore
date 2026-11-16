@@ -80,7 +80,7 @@ impl<T> SequenceElement<T> {
     }
 
     /// Create a new aminoacid without any modifications
-    pub fn new(aminoacid: CheckedAminoAcid<T>, ambiguous: Option<NonZeroU32>) -> Self {
+    pub const fn new(aminoacid: CheckedAminoAcid<T>, ambiguous: Option<NonZeroU32>) -> Self {
         Self {
             aminoacid,
             modifications: ThinVec::new(),

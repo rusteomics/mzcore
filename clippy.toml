@@ -29,6 +29,7 @@ doc-valid-idents = [
     "PowerNovo",
     "ProForma",
     "PSM_ID",
+    "psm_utils",
     "PubMed",
     "SpectrumSequenceList",
     "π-HelixNovo",

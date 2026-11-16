@@ -85,10 +85,8 @@ impl<T, const DEPTH: u16> DiagonalArray<T, DEPTH> {
             } else {
                 current_index = [current_index[0], current_index[1] + 1];
             }
-            let retain =
-                !indices.contains(&current_index[0]) && !indices.contains(&current_index[1]);
-            retain
-        })
+            !indices.contains(&current_index[0]) && !indices.contains(&current_index[1])
+        });
     }
 }
 
@@ -174,8 +172,7 @@ impl<T: Default + Clone, const DEPTH: u16> DiagonalArray<T, DEPTH> {
             data: vec![
                 T::default();
                 Self::length_with_depth(len, DEPTH.saturating_add(1) as usize)
-            ]
-            .into(),
+            ],
         }
     }
 }

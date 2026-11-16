@@ -196,15 +196,15 @@ format_family!(
 
             match pos {
                 (peptide, SequencePosition::NTerm) => {
-                        parsed.peptidoform.peptidoforms_mut()[peptide].add_simple_n_term(m.clone());
+                        parsed.peptidoform.peptidoforms_mut()[peptide].add_simple_n_term(m);
                 }
                 (peptide, SequencePosition::CTerm) => {
-                    parsed.peptidoform.peptidoforms_mut()[peptide].add_simple_c_term(m.clone());
+                    parsed.peptidoform.peptidoforms_mut()[peptide].add_simple_c_term(m);
                 }
                 (peptide, index) => {
                     parsed.peptidoform.peptidoforms_mut()[peptide][index]
                             .modifications
-                            .push(m.clone().into());
+                            .push(m.into());
                 }
             }
         }

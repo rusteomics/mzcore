@@ -482,10 +482,10 @@ pub(super) fn calculate_masses<const STEPS: u16>(
                 .map(|p| p.masses(mass_mode).into())
                 .sum::<Multi<Mass>>();
             if i - j == 0 {
-                seq += n.clone();
+                seq += n;
             }
             if i == sequence.len() - 1 {
-                seq += c.clone();
+                seq += c;
             }
             array[[i, j]] = seq;
         }

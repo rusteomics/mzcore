@@ -297,7 +297,7 @@ impl MolecularFormula {
 
     /// Get an empty molecular formula with only a mass of unspecified origin
     #[must_use]
-    pub fn with_additional_mass(additional_mass: f64) -> Self {
+    pub const fn with_additional_mass(additional_mass: f64) -> Self {
         Self {
             elements: ThinVec::new(),
             additional_mass: OrderedFloat(additional_mass),
@@ -376,12 +376,10 @@ impl MolecularFormula {
                 .retain(|el: &(Element, Option<std::num::NonZero<u16>>, i32)| {
                     el.0 != Element::Electron
                 });
+        } else if let Some(el) = self.elements.iter_mut().find(|e| e.0 == Element::Electron) {
+            el.2 = -charge.value as i32;
         } else {
-            if let Some(el) = self.elements.iter_mut().find(|e| e.0 == Element::Electron) {
-                el.2 = -charge.value as i32;
-            } else {
-                self.elements.push((Element::Electron, None, -charge.value as i32));
-            }
+            self.elements.push((Element::Electron, None, -charge.value as i32));
         }
     }
 

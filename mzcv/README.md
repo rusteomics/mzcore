@@ -12,7 +12,7 @@ When downloading a file it downloads it to the standardised location and compres
 
 ## Lookup
 
-There are three major ways of looking up data: [index](CVIndex::get_by_index), [name](CVIndex::get_by_name), and [fuzzy match](CVIndex::search) search. The first two use HashMaps to do constant time lookups, the second uses a trigram index (when `search-index` is turned on, or loops over all data if not) and loops over all matches using Levenshtein distance to find good enough matches.
+There are three major ways of looking up data: [index](CVIndex::get_by_index), [name](CVIndex::get_by_name), and [fuzzy match](CVIndex::search) search. The first two use `HashMaps` to do constant time lookups, the second uses a trigram index (when `search-index` is turned on, or loops over all data if not) and loops over all matches using Levenshtein distance to find good enough matches.
 
 ## Compilation features
 
@@ -24,10 +24,10 @@ There are three major ways of looking up data: [index](CVIndex::get_by_index), [
 
 ### v0.3.0
 
-- Added relationship and xref to OboStanza
-- Removed OboStanza is_a and part_of in favour of relationship
+- Added relationship and xref to `OboStanza`
+- Removed `OboStanza` `is_a` and `part_of` in favour of relationship
 - Tracked types of Obo values
-- Added children tracking in CVData
+- Added children tracking in `CVData`
 - Added a Term structure (curie + name)
-- Made levenshtein_distance public, was used for fuzzy matching internally already
+- Made `levenshtein_distance` public, was used for fuzzy matching internally already
 - Implemented common traits for many structures

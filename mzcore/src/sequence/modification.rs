@@ -129,9 +129,9 @@ pub struct ModificationId {
     pub cross_ids: ThinVec<CrossId>,
     /// Indicate if this modification is marked as obsolete
     pub obsolete: bool,
-    /// Parent terms following 'is_a' relationships
+    /// Parent terms following '`is_a`' relationships
     pub parents: ThinVec<AccessionCode>,
-    /// Child terms following 'is_a' relationships
+    /// Child terms following '`is_a`' relationships
     pub children: ThinVec<AccessionCode>,
 }
 

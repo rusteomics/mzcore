@@ -30,7 +30,7 @@ If you want to know how two peptidoforms/proteoforms are related and want to kee
  - With [custom scoring](crate::AlignScoring)
  - [Global](crate::AlignType::GLOBAL), [local](crate::AlignType::LOCAL), [either-global](crate::AlignType::EITHER_GLOBAL) and mixtures of these all
  - [Indexed alignment](crate::AlignIndex) to speed up repeated alignments against the same database
- - [Consecutive alignment](crate::consecutive_align) (only when the `imgt` feature is turned on) to create a DomainGapAlign[^2] like alignment with the mass-based alignment
+ - [Consecutive alignment](crate::consecutive_align) (only when the `imgt` feature is turned on) to create a `DomainGapAlign`[^2] like alignment with the mass-based alignment
 
 ## The alignment itself
 
@@ -60,13 +60,13 @@ assert_eq!(alignment.ppm().value, 0.0);
 ```
 
 This extends the Smith-Waterman/Needleman-Wunsch alignment states (Match, Mismatch, Insertion, and Deletion) with the following additional states:
-1. IndentityMassMismatch: the same amino acid but the mass of the sequence element is different, this happens when either of the options has a modification that is not present on the other, this could be an error or could be fine depending on the use of the alignment, use [`PairMode`](crate::PairMode) to control this behaviour.
+1. `IndentityMassMismatch`: the same amino acid but the mass of the sequence element is different, this happens when either of the options has a modification that is not present on the other, this could be an error or could be fine depending on the use of the alignment, use [`PairMode`](crate::PairMode) to control this behaviour.
 1. Rotation: the same amino acids but in a different order, example: `AHK` on `KAH`.
 1. Isobaric: different amino acids (or different modifications) that have the same mass, example `N` on `GG`, or `M[Oxidation]` on `F`.
 
 As is visible in the examples the Rotation errors can be longer than just one amino acids, and Isobaric errors can even be of different lengths for the two peptidoforms. This means that these errors need special care to be visualised properly. Also because these need to handle these different lengths the main loop of the alignment needs to loop over all combinations of lengths from 1 to the maximum chosen length. This means that algorithmically speaking this alignment is slower than SW/NW.
 
-## AlignTypes
+## `AlignTypes`
 
 Alignments can be done global (as is Needleman-Wunsch) or local (as is Smith-Waterman). Global means that both peptidoforms have to be fully matched, local means that both peptidoforms can have unmatched sequences on both sides of the match. Either global is a variation that enforces that at least one of the two peptidoforms has to be fully matched or said inversely only one peptidoform can have unmatched sequence. This can be used when it is known that sequences are related but neither is known _a priori_ to be a full superset of the other sequence. For example if you are matching a peptide to a database and the database does not contain the full protein sequence but only a part of the sequence. As is common in antibodies, those are built from three/four separate genes spliced together.
 
@@ -173,7 +173,7 @@ assert_eq!(stats.mass_similar, 6); // 6 out of the 6 positions are mass similar
 
 - Allowed alignment of Linear complexity peptides (and below)
 - Added mass-based multiple sequence alignment (MMSA)
-- Added more precise alignment options for AlignIndex
+- Added more precise alignment options for `AlignIndex`
 
 [^1]: Schulte, D.; Snijder, J. A Handle on Mass Coincidence Errors in De Novo Sequencing of Antibodies by Bottom-up Proteomics. <https://doi.org/10.1021/acs.jproteome.4c00188>.
-[^2]: Ehrenmann, F.; Kaas, Q.; Lefranc, M.-P. IMGT/3Dstructure-DB and IMGT/DomainGapAlign: A Database and a Tool for Immunoglobulins or Antibodies, T Cell Receptors, MHC, IgSF and MhcSF. <https://doi.org/10.1093/nar/gkp946>.
+[^2]: Ehrenmann, F.; Kaas, Q.; Lefranc, M.-P. IMGT/3Dstructure-DB and IMGT/DomainGapAlign: A Database and a Tool for Immunoglobulins or Antibodies, T Cell Receptors, MHC, `IgSF` and `MhcSF`. <https://doi.org/10.1093/nar/gkp946>.

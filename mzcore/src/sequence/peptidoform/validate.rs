@@ -103,13 +103,7 @@ impl<Complexity> Peptidoform<Complexity> {
             }
         }
 
-        if self.name().chars().filter(|c| *c == '(').count()
-            != self.name().chars().filter(|c| *c == ')').count()
-        {
-            return false;
-        }
-
-        true
+        self.name().chars().filter(|c| *c == '(').count() == self.name().chars().filter(|c| *c == ')').count()
     }
 }
 

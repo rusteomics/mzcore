@@ -563,7 +563,7 @@ impl AminoAcid {
 
 impl std::fmt::Display for AminoAcid {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{self:?}",)
+        write!(f, "{self:?}")
     }
 }
 
@@ -761,7 +761,7 @@ pub struct FragmentType(mzannotate::fragment::FragmentType);
 impl FragmentType {
     fn __repr__(&self) -> String {
         let (sup, main, position) = self.label();
-        format!("FragmentType(sup='{sup:?}', main='{main}', position='{position:?}')",)
+        format!("FragmentType(sup='{sup:?}', main='{main}', position='{position:?}')")
     }
 
     /// The kind of fragment
@@ -1100,7 +1100,7 @@ impl PeptidoformIonSet {
     ) -> Vec<Fragment> {
         self.0
             .generate_theoretical_fragments(
-                max_charge.map(|c| mzcore::system::isize::Charge::new::<mzcore::system::e>(c)),
+                max_charge.map(mzcore::system::isize::Charge::new::<mzcore::system::e>),
                 &match_model(model),
             )
             .iter()
@@ -1263,7 +1263,7 @@ impl PeptidoformIon {
     ) -> Vec<Fragment> {
         self.0
             .generate_theoretical_fragments(
-                max_charge.map(|c| mzcore::system::isize::Charge::new::<mzcore::system::e>(c)),
+                max_charge.map(mzcore::system::isize::Charge::new::<mzcore::system::e>),
                 &match_model(model),
             )
             .into_iter()
@@ -1462,7 +1462,7 @@ impl Peptidoform {
     ) -> Option<Vec<Fragment>> {
         self.0.clone().into_linear().map(|p| {
             p.generate_theoretical_fragments(
-                max_charge.map(|c| mzcore::system::isize::Charge::new::<mzcore::system::e>(c)),
+                max_charge.map(mzcore::system::isize::Charge::new::<mzcore::system::e>),
                 &match_model(model),
             )
             .into_iter()
