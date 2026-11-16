@@ -103,7 +103,8 @@ impl<Complexity> Peptidoform<Complexity> {
             }
         }
 
-        self.name().chars().filter(|c| *c == '(').count() == self.name().chars().filter(|c| *c == ')').count()
+        self.name().chars().filter(|c| *c == '(').count()
+            == self.name().chars().filter(|c| *c == ')').count()
     }
 }
 

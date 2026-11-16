@@ -383,8 +383,7 @@ impl SimpleModificationInner {
                         ..
                     } => {
                         let left = PlacementRule::any_possible_aa(rules_left, aa, position);
-                        let right =
-                            PlacementRule::any_possible_aa(rules_right, aa, position);
+                        let right = PlacementRule::any_possible_aa(rules_right, aa, position);
                         if left && right {
                             RulePossible::Symmetric(BTreeSet::from([index]))
                         } else if left {

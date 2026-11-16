@@ -323,8 +323,7 @@ impl<const STEPS: u16, Source: HasPeptidoform<Linear> + Clone + Sync + Send>
                 .par_iter()
                 .enumerate()
                 .flat_map(|(i, s)| {
-                    self
-                        .sequences
+                    self.sequences
                         .par_iter()
                         .enumerate()
                         .take(i)
