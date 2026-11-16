@@ -296,8 +296,9 @@ impl MolecularFormula {
     }
 
     /// Get an empty molecular formula with only a mass of unspecified origin
+    #[expect(clippy::missing_const_for_fn)]
     #[must_use]
-    pub const fn with_additional_mass(additional_mass: f64) -> Self {
+    pub fn with_additional_mass(additional_mass: f64) -> Self {
         Self {
             elements: ThinVec::new(),
             additional_mass: OrderedFloat(additional_mass),

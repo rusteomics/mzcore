@@ -80,7 +80,8 @@ impl<T> SequenceElement<T> {
     }
 
     /// Create a new aminoacid without any modifications
-    pub const fn new(aminoacid: CheckedAminoAcid<T>, ambiguous: Option<NonZeroU32>) -> Self {
+    #[expect(clippy::missing_const_for_fn)]
+    pub fn new(aminoacid: CheckedAminoAcid<T>, ambiguous: Option<NonZeroU32>) -> Self {
         Self {
             aminoacid,
             modifications: ThinVec::new(),
