@@ -1,6 +1,8 @@
 use mzcore::{
     chemistry::{AmbiguousLabel, MassOutputMode, MassOutputType},
     prelude::{AminoAcid, MassMode, SequencePosition},
+    sequence::{AtLeast, CheckedAminoAcid, SemiAmbiguous, SequenceElement, UnAmbiguous},
+    system::f32::Ratio,
 };
 
 use crate::{
@@ -64,6 +66,7 @@ impl<Mode: MassOutputMode> AnnotatedSpectrum<Mode> {
         let mut result = AmbiguousStatistics {
             aminoacids: Vec::new(),
             modifications: Vec::new(),
+            deamidation: Vec::new(),
         };
         for (peptidoform_ion_index, analyte) in self.analytes.iter().enumerate() {
             let AnalyteTarget::PeptidoformIon(peptidoform_ion) = &analyte.target else {
@@ -145,6 +148,36 @@ impl<Mode: MassOutputMode> AnnotatedSpectrum<Mode> {
                                 optiona_b: (AminoAcid::Glutamine, glutamine.0, glutamine.1),
                             });
                         }
+                        AminoAcid::AsparticAcid
+                            if aa.modifications.iter().any(|m| {
+                                m.description().is_some_and(|d| {
+                                    d.id()
+                                        == mzcv::curie!(MOD:02117|L-aspartic acid isomer).accession
+                                })
+                            }) =>
+                        {
+                            let asp = statistics(&AmbiguousLabel::AminoAcid {
+                                option: AminoAcid::AsparticAcid,
+                                sequence_index,
+                                peptidoform_index,
+                                peptidoform_ion_index,
+                            });
+                            let iso_asp = statistics(&AmbiguousLabel::IsoAsparticAcid {
+                                sequence_index,
+                                peptidoform_index,
+                                peptidoform_ion_index,
+                            });
+
+                            result.deamidation.push(AmbiguousAsparticAcid {
+                                sequence_index,
+                                peptidoform_index,
+                                peptidoform_ion_index,
+                                theoretical_fragments_asp: asp.0,
+                                theoretical_fragments_iso_asp: iso_asp.0,
+                                tic_asp: asp.1,
+                                tic_iso_asp: iso_asp.1,
+                            });
+                        }
                         _ => (),
                     }
                 }
@@ -183,6 +216,8 @@ pub struct AmbiguousStatistics {
     pub aminoacids: Vec<AmbiguousAminoAcid>,
     /// All ambiguous modifications (modifications of unknown position)
     pub modifications: Vec<AmbiguousModification>,
+    /// All ambiguous aspartic acids
+    pub deamidation: Vec<AmbiguousAsparticAcid>,
 }
 
 /// The statistics on an ambiguous amino acid and the support for both options
@@ -200,6 +235,113 @@ pub struct AmbiguousAminoAcid {
     /// Second option, the amino acid, the fraction of theoretical fragments found, and the
     /// fraction of TIC that is annotated
     pub optiona_b: (AminoAcid, Recovered<u32>, Recovered<f32>),
+}
+
+/// The statistics on an ambiguous aspartic acid and the support for both options
+#[derive(Clone, Copy, Debug)]
+pub struct AmbiguousAsparticAcid {
+    /// What location in the sequence are we talking about
+    pub sequence_index: usize,
+    /// Peptidoform index
+    pub peptidoform_index: usize,
+    /// Peptidoform ion index
+    pub peptidoform_ion_index: usize,
+    /// The fraction of theoretical fragments found for Asp
+    pub theoretical_fragments_asp: Recovered<u32>,
+    /// The fraction of theoretical fragments found for IsoAsp
+    pub theoretical_fragments_iso_asp: Recovered<u32>,
+    /// The fraction of TIC that could be explained by these fragments for Asp
+    pub tic_asp: Recovered<f32>,
+    /// The fraction of TIC that could be explained by these fragments for IsoAsp
+    pub tic_iso_asp: Recovered<f32>,
+}
+
+impl AmbiguousAsparticAcid {
+    /// The ratio between the fragments (TIC IsoAsp / Asp), this is None if Asp is not found
+    pub fn ratio(&self) -> Option<Ratio> {
+        (self.tic_asp.found > 0.0).then(|| {
+            Ratio::new::<mzcore::system::ratio::fraction>(
+                self.tic_iso_asp.found / self.tic_asp.found,
+            )
+        })
+    }
+
+    /// Resolve this location, based on the ration threshold below which this is `D`, above this it
+    /// is `D[L-aspartic acid isomer]` (it returns the base as that is assumed to already be in this
+    /// state) and the upper threshold above which it is `N[deamidated L-asparagine]`. It retrieves
+    /// the deamidation modification from the ontologies, if the modification does not exist
+    /// regardless of if it is used in this instance or not this function returns None.
+    ///
+    /// # Panics
+    /// It has debug assertions for the lower threshold being smaller or equal to the upper
+    /// threshold, the lower threshold being 0.0 or more, and the upper threshold being 1.0 or
+    /// below.
+    #[allow(clippy::zero_prefixed_literal)] // Looks more recognisable that way
+    pub fn resolve<Complexity>(
+        &self,
+        lower_threshold: f32,
+        upper_threshold: f32,
+        ontologies: &mzcore::ontology::Ontologies,
+        base: &SequenceElement<Complexity>,
+    ) -> Option<SequenceElement<Complexity>>
+    where
+        CheckedAminoAcid<Complexity>: From<CheckedAminoAcid<UnAmbiguous>>,
+    {
+        debug_assert!(lower_threshold <= upper_threshold);
+        debug_assert!(upper_threshold <= 1.0);
+        debug_assert!(lower_threshold >= 0.0);
+
+        ontologies
+            .get_by_index(
+                mzcore::ontology::Ontology::Psimod,
+                &mzcv::curie!(MOD:00684|deamidated L-asparagine).accession,
+            )
+            .map(|deamidation| {
+                self.ratio()
+                    .map(|r| r.get::<mzcore::system::ratio::fraction>())
+                    .map_or_else(
+                        || base.clone(),
+                        |r| {
+                            if r <= lower_threshold {
+                                SequenceElement::new_with_modifications(
+                                    CheckedAminoAcid::AsparticAcid.into(),
+                                    base.modifications
+                                        .iter()
+                                        .filter(|m| {
+                                            m.description().is_none_or(|d| {
+                                                d.id()
+                                                != mzcv::curie!(MOD:02117|L-aspartic acid isomer)
+                                                    .accession
+                                            })
+                                        })
+                                        .cloned()
+                                        .collect(),
+                                    base.ambiguous,
+                                )
+                            } else if r >= upper_threshold {
+                                SequenceElement::new_with_modifications(
+                                    CheckedAminoAcid::Asparagine.into(),
+                                    base.modifications
+                                        .iter()
+                                        .filter(|m| {
+                                            m.description().is_none_or(|d| {
+                                                d.id()
+                                                != mzcv::curie!(MOD:02117|L-aspartic acid isomer)
+                                                    .accession
+                                            })
+                                        })
+                                        .cloned()
+                                        .chain(std::iter::once(deamidation.into()))
+                                        .collect(),
+                                    base.ambiguous,
+                                )
+                            } else {
+                                base.clone()
+                            }
+                        },
+                    )
+            })
+    }
 }
 
 /// The statistics on an ambiguous modification and the support for each of the possible locations

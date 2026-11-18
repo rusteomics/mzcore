@@ -203,6 +203,17 @@ impl std::fmt::Display for AmbiguousLabel {
                 peptidoform_index + 1,
                 sequence_index + 1
             ),
+            Self::IsoAsparticAcid {
+                sequence_index,
+                peptidoform_index,
+                peptidoform_ion_index,
+            } => write!(
+                f,
+                "IsoD@p{}.{}i{}",
+                peptidoform_ion_index + 1,
+                peptidoform_index + 1,
+                sequence_index + 1
+            ),
             Self::Modification {
                 id,
                 sequence_index,

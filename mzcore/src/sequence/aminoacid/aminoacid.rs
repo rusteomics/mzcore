@@ -458,7 +458,10 @@ impl IsAminoAcid for AminoAcid {
             Self::Alanine => molecular_formula!(H 3 C 1).into(),
             Self::Arginine => molecular_formula!(H 10 C 4 N 3).into(), // One of the H's counts as the charge carrier and is added later
             Self::Asparagine => molecular_formula!(H 4 C 2 O 1 N 1).into(),
-            Self::AsparticAcid => molecular_formula!(H 3 C 2 O 2).into(),
+            Self::AsparticAcid => vec![
+                molecular_formula!(H 1 C 1 O 2 (AmbiguousLabel::IsoAsparticAcid { sequence_index, peptidoform_index, peptidoform_ion_index })), 
+                molecular_formula!(H 3 C 2 O 2 (AmbiguousLabel::AminoAcid{option: Self::AsparticAcid, sequence_index, peptidoform_index, peptidoform_ion_index}))
+            ].into(),
             Self::AmbiguousAsparagine => vec![
                 molecular_formula!(H 4 C 2 O 1 N 1 (AmbiguousLabel::AminoAcid{option: Self::Asparagine, sequence_index, peptidoform_index, peptidoform_ion_index})),
                 molecular_formula!(H 3 C 2 O 2 (AmbiguousLabel::AminoAcid{option: Self::AsparticAcid, sequence_index, peptidoform_index, peptidoform_ion_index})),

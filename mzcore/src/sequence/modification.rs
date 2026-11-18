@@ -1356,6 +1356,18 @@ impl Modification {
         }
     }
 
+    /// Get the modification description, if it is there.
+    pub fn description(&self) -> Option<&ModificationId> {
+        match self {
+            Self::Simple(modification)
+            | Self::Ambiguous { modification, .. }
+            | Self::CrossLink {
+                linker: modification,
+                ..
+            } => modification.description(),
+        }
+    }
+
     /// Get a url for more information on this modification. Only defined for modifications from
     /// ontologies.
     pub fn ontology_url(&self) -> Option<String> {

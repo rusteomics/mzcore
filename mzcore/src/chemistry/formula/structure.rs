@@ -157,6 +157,16 @@ pub enum AmbiguousLabel {
         /// Peptidoform ion index
         peptidoform_ion_index: usize,
     },
+    /// A formula specific for iso aspartic acid, this is a separate enum class as there is no way
+    /// to encode this as an amino acid currently.
+    IsoAsparticAcid {
+        /// What location in the sequence are we talking about
+        sequence_index: usize,
+        /// Peptidoform index
+        peptidoform_index: usize,
+        /// Peptidoform ion index
+        peptidoform_ion_index: usize,
+    },
     /// An ambiguous modification, with the actual position
     Modification {
         /// Which ambiguous modification
@@ -192,6 +202,15 @@ impl Space for AmbiguousLabel {
                 } => {
                     option.space()
                         + sequence_index.space()
+                        + peptidoform_index.space()
+                        + peptidoform_ion_index.space()
+                }
+                Self::IsoAsparticAcid {
+                    sequence_index,
+                    peptidoform_index,
+                    peptidoform_ion_index,
+                } => {
+                    sequence_index.space()
                         + peptidoform_index.space()
                         + peptidoform_ion_index.space()
                 }

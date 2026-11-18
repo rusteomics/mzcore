@@ -9,6 +9,7 @@ doc-valid-idents = [
     "GNOme",
     "InstaNovo",
     "InstaNovoPlus",
+    "IsoAsp",
     "MaxNovo",
     "MaxQuant",
     "MetaMorpheus",
