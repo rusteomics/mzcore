@@ -5,6 +5,7 @@ use mzcore::{
     system::OrderedTime,
 };
 use serde::{Deserialize, Serialize};
+use thin_vec::ThinVec;
 
 /// Multiple spectrum identifiers
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
@@ -13,9 +14,9 @@ pub enum SpectrumIds {
     #[default]
     None,
     /// When the source file is now known
-    FileNotKnown(Vec<SpectrumId>),
+    FileNotKnown(ThinVec<SpectrumId>),
     /// When the source file is known, grouped per file
-    FileKnown(Vec<(PathBuf, Vec<SpectrumId>)>),
+    FileKnown(ThinVec<(PathBuf, ThinVec<SpectrumId>)>),
 }
 
 /// A spectrum identifier
@@ -65,6 +66,23 @@ impl SpectrumId {
         match self {
             Self::Native(n) => Some(n),
             Self::Index(_) | Self::RetentionTime(_) | Self::Number(_) => None,
+        }
+    }
+}
+
+impl SpectrumIds {
+    /// Shrink all Vecs to exactly fit the size
+    pub fn shrink_to_fit(&mut self) {
+        match self {
+            Self::None => (),
+            Self::FileKnown(f) => {
+                f.shrink_to_fit();
+                for s in f {
+                    s.0.shrink_to_fit();
+                    s.1.shrink_to_fit();
+                }
+            }
+            Self::FileNotKnown(f) => f.shrink_to_fit(),
         }
     }
 }

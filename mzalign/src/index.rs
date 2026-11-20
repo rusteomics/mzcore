@@ -371,3 +371,11 @@ impl<const STEPS: u16, Source: HasPeptidoform<Linear> + Clone + Sync> AlignIndex
         others.into_par_iter().map(move |o| self.align_one(o, scoring, align_type))
     }
 }
+
+impl<const STEPS: u16, Source: mzcore::space::Space> mzcore::space::Space
+    for AlignIndex<STEPS, Source>
+{
+    fn space(&self) -> mzcore::space::UsedSpace {
+        self.distance_matrix.space() + self.mode.space() + self.sequences.space()
+    }
+}

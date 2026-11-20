@@ -99,7 +99,11 @@ pub enum SimpleModificationInner {
     /// A modification from one of the modification ontologies
     Database {
         /// The placement rules, neutral losses, and diagnostic ions
-        specificities: Vec<(Vec<PlacementRule>, Vec<NeutralLoss>, Vec<DiagnosticIon>)>,
+        specificities: ThinVec<(
+            ThinVec<PlacementRule>,
+            ThinVec<NeutralLoss>,
+            ThinVec<DiagnosticIon>,
+        )>,
         /// The chemical formula for this modification (diff formula)
         formula: MolecularFormula,
         /// The id/name
@@ -108,7 +112,7 @@ pub enum SimpleModificationInner {
     /// A cross-linker
     Linker {
         /// All possible specificities for this linker
-        specificities: Vec<LinkerSpecificity>,
+        specificities: ThinVec<LinkerSpecificity>,
         /// The chemical formula for this linker (diff formula)
         formula: MolecularFormula,
         /// The id/name
@@ -473,7 +477,7 @@ impl SimpleModificationInner {
                     LinkerSpecificity::Asymmetric {
                         rules: (rules_a, rules_b),
                         ..
-                    } => rules_a.iter().cloned().chain(rules_b.iter().cloned()).collect_vec(),
+                    } => rules_a.iter().cloned().chain(rules_b.iter().cloned()).collect(),
                 })
                 .map(|rule| match rule {
                     PlacementRule::AminoAcid(aa, pos, mpos) => {
@@ -620,7 +624,7 @@ impl ParseJson for SimpleModificationInner {
                             )
                         };
                         Ok(Self::Database {
-                            specificities: Vec::from_json_value(
+                            specificities: ThinVec::from_json_value(
                                 map.remove("specificities").ok_or_else(|| {
                                     BoxedError::new(
                                         BasicKind::Error,
@@ -669,7 +673,7 @@ impl ParseJson for SimpleModificationInner {
                             )
                         };
                         Ok(Self::Linker {
-                            specificities: Vec::from_json_value(
+                            specificities: ThinVec::from_json_value(
                                 map.remove("specificities").ok_or_else(|| {
                                     BoxedError::new(
                                         BasicKind::Error,

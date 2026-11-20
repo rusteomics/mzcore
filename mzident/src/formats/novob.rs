@@ -242,7 +242,7 @@ impl PSMMetaData for NovoBPSM {
     }
 
     fn scans(&self) -> SpectrumIds {
-        SpectrumIds::FileNotKnown(vec![SpectrumId::Index(self.scan)])
+        SpectrumIds::FileNotKnown(vec![SpectrumId::Index(self.scan)].into())
     }
 
     fn experimental_mz(&self) -> Option<MassOverCharge> {

@@ -327,10 +327,13 @@ impl PSMMetaData for PLGSPSM {
     }
 
     fn scans(&self) -> SpectrumIds {
-        SpectrumIds::FileNotKnown(vec![SpectrumId::RetentionTime(
-            OrderedTime::from(self.precursor_lift_off_rt)
-                ..=OrderedTime::from(self.precursor_touch_down_rt),
-        )])
+        SpectrumIds::FileNotKnown(
+            vec![SpectrumId::RetentionTime(
+                OrderedTime::from(self.precursor_lift_off_rt)
+                    ..=OrderedTime::from(self.precursor_touch_down_rt),
+            )]
+            .into(),
+        )
     }
 
     fn experimental_mz(&self) -> Option<MassOverCharge> {

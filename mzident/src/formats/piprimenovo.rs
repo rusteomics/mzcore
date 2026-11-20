@@ -136,7 +136,7 @@ impl PSMMetaData for PiPrimeNovoPSM {
     }
 
     fn scans(&self) -> SpectrumIds {
-        SpectrumIds::FileNotKnown(vec![SpectrumId::Native(self.title.clone())])
+        SpectrumIds::FileNotKnown(vec![SpectrumId::Native(self.title.clone())].into())
     }
 
     fn experimental_mz(&self) -> Option<MassOverCharge> {

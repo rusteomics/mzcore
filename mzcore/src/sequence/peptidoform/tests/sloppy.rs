@@ -54,7 +54,7 @@ fn sloppy_names_custom() {
                 ThinVec::default(),
                 false,
             ),
-            specificities: Vec::new(),
+            specificities: ThinVec::new(),
         },
     )]);
     assert!(Modification::sloppy_modification("test", 0..4, None, &ontologies).is_ok());

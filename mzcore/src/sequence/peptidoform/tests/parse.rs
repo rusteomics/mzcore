@@ -485,10 +485,12 @@ fn parse_custom() {
                     AminoAcid::CANONICAL_AMINO_ACIDS.into(),
                     ResiduePosition::Anywhere,
                     ModificationPosition::Sidechain,
-                )],
-                Vec::new(),
-                Vec::new(),
-            )],
+                )]
+                .into(),
+                ThinVec::new(),
+                ThinVec::new(),
+            )]
+            .into(),
             id: ModificationId::new(
                 Ontology::Custom,
                 "WEEE".into(),

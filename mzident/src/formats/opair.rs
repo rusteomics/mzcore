@@ -344,9 +344,13 @@ impl PSMMetaData for OpairPSM {
     }
 
     fn scans(&self) -> SpectrumIds {
-        SpectrumIds::FileKnown(vec![(self.raw_file.clone(), vec![SpectrumId::Number(
-            self.scan_number,
-        )])])
+        SpectrumIds::FileKnown(
+            vec![(
+                self.raw_file.clone(),
+                vec![SpectrumId::Number(self.scan_number)].into(),
+            )]
+            .into(),
+        )
     }
 
     fn experimental_mz(&self) -> Option<MassOverCharge> {

@@ -782,14 +782,17 @@ impl PSMMetaData for PeaksPSM {
                     )
                 },
                 |raw_file| {
-                    SpectrumIds::FileKnown(vec![(
-                        raw_file,
-                        scan_number
-                            .iter()
-                            .flat_map(|s| s.scans.clone())
-                            .map(SpectrumId::Number)
-                            .collect(),
-                    )])
+                    SpectrumIds::FileKnown(
+                        vec![(
+                            raw_file,
+                            scan_number
+                                .iter()
+                                .flat_map(|s| s.scans.clone())
+                                .map(SpectrumId::Number)
+                                .collect(),
+                        )]
+                        .into(),
+                    )
                 },
             )
         })

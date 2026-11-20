@@ -193,8 +193,12 @@ impl PSMMetaData for PsmUtilsPSM {
 
     fn scans(&self) -> SpectrumIds {
         self.rawfile.clone().map_or_else(
-            || SpectrumIds::FileNotKnown(vec![self.spectrum_id.clone()]),
-            |rawfile| SpectrumIds::FileKnown(vec![(rawfile, vec![self.spectrum_id.clone()])]),
+            || SpectrumIds::FileNotKnown(vec![self.spectrum_id.clone()].into()),
+            |rawfile| {
+                SpectrumIds::FileKnown(
+                    vec![(rawfile, vec![self.spectrum_id.clone()].into())].into(),
+                )
+            },
         )
     }
 

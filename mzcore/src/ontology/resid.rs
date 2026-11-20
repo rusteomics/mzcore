@@ -4,6 +4,7 @@ use std::io::Read;
 use context_error::{BoxedError, Context, CreateError, FullErrorContent, combine_error};
 use mzcv::{CVError, CVFile, CVSource, CVVersion, HashBufReader};
 use roxmltree::*;
+use thin_vec::ThinVec;
 
 use crate::{
     chemistry::MolecularFormula,
@@ -410,12 +411,12 @@ impl CVSource for Resid {
                     if data.is_none() {
                         if rule.1.is_none() {
                             data = Some(ModData::Mod {
-                                specificities: Vec::new(),
+                                specificities: ThinVec::new(),
                             });
                         } else {
                             data = Some(ModData::Linker {
                                 length: crate::sequence::LinkerLength::Unknown,
-                                specificities: Vec::new(),
+                                specificities: ThinVec::new(),
                             });
                         }
                     }
@@ -428,10 +429,11 @@ impl CVSource for Resid {
                                     vec![rule.0].into(),
                                     rule.2.unwrap_or(ResiduePosition::Anywhere),
                                     ModificationPosition::Sidechain,
-                                )],
-                                stubs: Vec::new(),
-                                neutral_losses: Vec::new(),
-                                diagnostic: Vec::new(),
+                                )]
+                                .into(),
+                                stubs: ThinVec::new(),
+                                neutral_losses: ThinVec::new(),
+                                diagnostic: ThinVec::new(),
                             });
                         } else {
                             specificities.push(LinkerSpecificity::Asymmetric {
@@ -440,16 +442,18 @@ impl CVSource for Resid {
                                         vec![rule.0].into(),
                                         rule.2.unwrap_or(ResiduePosition::Anywhere),
                                         ModificationPosition::Sidechain,
-                                    )],
+                                    )]
+                                    .into(),
                                     vec![PlacementRule::AminoAcid(
                                         vec![aa].into(),
                                         rule.2.unwrap_or(ResiduePosition::Anywhere),
                                         ModificationPosition::Sidechain,
-                                    )],
+                                    )]
+                                    .into(),
                                 ),
-                                stubs: Vec::new(),
-                                neutral_losses: Vec::new(),
-                                diagnostic: Vec::new(),
+                                stubs: ThinVec::new(),
+                                neutral_losses: ThinVec::new(),
+                                diagnostic: ThinVec::new(),
                             });
                         }
                     } else if let (Some(ModData::Mod { specificities }), None) = (&mut data, rule.1)
@@ -459,9 +463,10 @@ impl CVSource for Resid {
                                 vec![rule.0].into(),
                                 rule.2.unwrap_or(ResiduePosition::Anywhere),
                                 ModificationPosition::Sidechain,
-                            )],
-                            Vec::new(),
-                            Vec::new(),
+                            )]
+                            .into(),
+                            ThinVec::new(),
+                            ThinVec::new(),
                         ));
                     } else {
                         combine_error(

@@ -158,8 +158,12 @@ impl PSMMetaData for PowerNovoPSM {
     fn scans(&self) -> SpectrumIds {
         self.scan.as_ref().map_or(SpectrumIds::None, |scan| {
             self.raw_file.clone().map_or_else(
-                || SpectrumIds::FileNotKnown(vec![SpectrumId::Index(*scan)]),
-                |raw_file| SpectrumIds::FileKnown(vec![(raw_file, vec![SpectrumId::Index(*scan)])]),
+                || SpectrumIds::FileNotKnown(vec![SpectrumId::Index(*scan)].into()),
+                |raw_file| {
+                    SpectrumIds::FileKnown(
+                        vec![(raw_file, vec![SpectrumId::Index(*scan)].into())].into(),
+                    )
+                },
             )
         })
     }

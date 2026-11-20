@@ -162,9 +162,13 @@ impl PSMMetaData for SpectrumSequenceListPSM {
     }
 
     fn scans(&self) -> SpectrumIds {
-        SpectrumIds::FileKnown(vec![(self.raw_file.clone(), vec![SpectrumId::Index(
-            self.scan,
-        )])])
+        SpectrumIds::FileKnown(
+            vec![(
+                self.raw_file.clone(),
+                vec![SpectrumId::Index(self.scan)].into(),
+            )]
+            .into(),
+        )
     }
 
     fn experimental_mz(&self) -> Option<MassOverCharge> {

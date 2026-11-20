@@ -1,9 +1,10 @@
 use mzcore::{
     chemistry::{AmbiguousLabel, MassOutputMode, MassOutputType},
     prelude::{AminoAcid, MassMode, SequencePosition},
-    sequence::{AtLeast, CheckedAminoAcid, SemiAmbiguous, SequenceElement, UnAmbiguous},
+    sequence::{CheckedAminoAcid, SequenceElement, UnAmbiguous},
     system::f32::Ratio,
 };
+use thin_vec::ThinVec;
 
 use crate::{
     annotation::{Recovered, model::MatchingParameters},
@@ -64,9 +65,9 @@ impl<Mode: MassOutputMode> AnnotatedSpectrum<Mode> {
         };
 
         let mut result = AmbiguousStatistics {
-            aminoacids: Vec::new(),
-            modifications: Vec::new(),
-            deamidation: Vec::new(),
+            aminoacids: ThinVec::new(),
+            modifications: ThinVec::new(),
+            deamidation: ThinVec::new(),
         };
         for (peptidoform_ion_index, analyte) in self.analytes.iter().enumerate() {
             let AnalyteTarget::PeptidoformIon(peptidoform_ion) = &analyte.target else {
@@ -213,11 +214,17 @@ impl<Mode: MassOutputMode> AnnotatedSpectrum<Mode> {
 #[derive(Clone, Debug)]
 pub struct AmbiguousStatistics {
     /// All ambiguous amino acids
-    pub aminoacids: Vec<AmbiguousAminoAcid>,
+    pub aminoacids: ThinVec<AmbiguousAminoAcid>,
     /// All ambiguous modifications (modifications of unknown position)
-    pub modifications: Vec<AmbiguousModification>,
+    pub modifications: ThinVec<AmbiguousModification>,
     /// All ambiguous aspartic acids
-    pub deamidation: Vec<AmbiguousAsparticAcid>,
+    pub deamidation: ThinVec<AmbiguousAsparticAcid>,
+}
+
+impl mzcore::space::Space for AmbiguousStatistics {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        self.aminoacids.space() + self.modifications.space() + self.deamidation.space()
+    }
 }
 
 /// The statistics on an ambiguous amino acid and the support for both options
@@ -237,6 +244,16 @@ pub struct AmbiguousAminoAcid {
     pub optiona_b: (AminoAcid, Recovered<u32>, Recovered<f32>),
 }
 
+impl mzcore::space::Space for AmbiguousAminoAcid {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        self.sequence_index.space()
+            + self.peptidoform_index.space()
+            + self.peptidoform_ion_index.space()
+            + self.optiona_a.space()
+            + self.optiona_b.space()
+    }
+}
+
 /// The statistics on an ambiguous aspartic acid and the support for both options
 #[derive(Clone, Copy, Debug)]
 pub struct AmbiguousAsparticAcid {
@@ -254,6 +271,18 @@ pub struct AmbiguousAsparticAcid {
     pub tic_asp: Recovered<f32>,
     /// The fraction of TIC that could be explained by these fragments for IsoAsp
     pub tic_iso_asp: Recovered<f32>,
+}
+
+impl mzcore::space::Space for AmbiguousAsparticAcid {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        self.sequence_index.space()
+            + self.peptidoform_index.space()
+            + self.peptidoform_ion_index.space()
+            + self.theoretical_fragments_asp.space()
+            + self.theoretical_fragments_iso_asp.space()
+            + self.tic_asp.space()
+            + self.tic_iso_asp.space()
+    }
 }
 
 impl AmbiguousAsparticAcid {
@@ -356,4 +385,13 @@ pub struct AmbiguousModification {
     /// All options, with the location, the fraction of theoretical fragments found, and the
     /// fraction of TIC that is annotated
     pub options: Vec<(SequencePosition, Recovered<u32>, Recovered<f32>)>,
+}
+
+impl mzcore::space::Space for AmbiguousModification {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        self.id.space()
+            + self.peptidoform_index.space()
+            + self.peptidoform_ion_index.space()
+            + self.options.space()
+    }
 }

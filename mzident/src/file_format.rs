@@ -303,6 +303,40 @@ impl From<KnownFileFormat> for FileFormat {
     }
 }
 
+impl mzcore::space::Space for KnownFileFormat {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        (mzcore::space::UsedSpace::stack(1)
+            + match self {
+                #[cfg(feature = "mzannotate")]
+                Self::AnnotatedSpectrum | Self::Fasta | Self::MzTab => {
+                    mzcore::space::UsedSpace::default()
+                }
+                Self::BasicCSV(_)
+                | Self::DeepNovoFamily(_)
+                | Self::InstaNovo(_)
+                | Self::MaxQuant(_)
+                | Self::MetaMorpheus(_)
+                | Self::NovoB(_)
+                | Self::Novor(_)
+                | Self::Opair(_)
+                | Self::Peaks(_)
+                | Self::PepNet(_)
+                | Self::PiHelixNovo(_)
+                | Self::PiPrimeNovo(_)
+                | Self::PLGS(_)
+                | Self::PLink(_)
+                | Self::PowerNovo(_)
+                | Self::Proteoscape(_)
+                | Self::PsmUtils(_)
+                | Self::PUniFind(_)
+                | Self::Sage(_)
+                | Self::MSFragger(_)
+                | Self::SpectrumSequenceList(_) => mzcore::space::UsedSpace::stack(1),
+            })
+        .set_total::<Self>()
+    }
+}
+
 /// A file format that might not be (fully) known
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[allow(clippy::upper_case_acronyms, missing_docs)]

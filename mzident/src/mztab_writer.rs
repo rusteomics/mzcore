@@ -117,9 +117,9 @@ impl<W: Write> MzTabWriter<W, Initial> {
                 SpectrumIds::FileKnown(scans) => scans,
                 SpectrumIds::FileNotKnown(_) => {
                     unknown = true;
-                    Vec::new()
+                    ThinVec::new()
                 }
-                SpectrumIds::None => Vec::new(),
+                SpectrumIds::None => ThinVec::new(),
             })
             .map(|(p, _)| p)
             .unique()

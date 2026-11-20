@@ -237,7 +237,7 @@ impl PSMMetaData for SagePSM {
     }
 
     fn scans(&self) -> SpectrumIds {
-        SpectrumIds::FileKnown(vec![(self.raw_file.clone(), vec![self.scan.clone()])])
+        SpectrumIds::FileKnown(vec![(self.raw_file.clone(), vec![self.scan.clone()].into())].into())
     }
 
     fn experimental_mz(&self) -> Option<MassOverCharge> {

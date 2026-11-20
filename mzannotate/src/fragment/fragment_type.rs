@@ -546,6 +546,12 @@ pub enum FragmentKind {
     unknown,
 }
 
+impl mzcore::space::Space for FragmentKind {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        mzcore::space::UsedSpace::stack(1).set_total::<Self>()
+    }
+}
+
 impl Display for FragmentKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", match self {

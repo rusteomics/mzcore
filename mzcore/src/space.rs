@@ -1,9 +1,11 @@
 #![allow(dead_code)]
 use std::{
     num::NonZero,
-    ops::{Add, AddAssign},
+    ops::{Add, AddAssign, Div},
+    sync::Arc,
 };
 
+use serde::{Deserialize, Serialize};
 use thin_vec::ThinVec;
 
 use crate::{
@@ -25,7 +27,7 @@ pub trait Space {
 
 /// The used amount of space broken down
 #[doc(hidden)]
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
 pub struct UsedSpace {
     pub(crate) stack: usize,
     pub(crate) padding: usize,
@@ -121,6 +123,20 @@ impl Add for UsedSpace {
     }
 }
 
+impl Div<usize> for UsedSpace {
+    type Output = Self;
+
+    fn div(self, rhs: usize) -> Self {
+        Self {
+            stack: self.stack / rhs,
+            padding: self.padding / rhs,
+            heap_used: self.heap_used / rhs,
+            heap_padding: self.heap_padding / rhs,
+            heap_unused: self.heap_unused / rhs,
+        }
+    }
+}
+
 impl Add<()> for UsedSpace {
     type Output = Self;
 
@@ -137,6 +153,22 @@ impl<T: Space> Space for &[T] {
         }
         UsedSpace {
             stack: size_of::<&[T]>(),
+            padding: 0,
+            heap_used: total.stack + total.heap_used,
+            heap_padding: total.padding + total.heap_padding,
+            heap_unused: 0,
+        }
+    }
+}
+
+impl<T: Space, const N: usize> Space for [T; N] {
+    fn space(&self) -> UsedSpace {
+        let mut total = UsedSpace::default();
+        for e in self {
+            total += e.space();
+        }
+        UsedSpace {
+            stack: size_of::<Self>(),
             padding: 0,
             heap_used: total.stack + total.heap_used,
             heap_padding: total.padding + total.heap_padding,
@@ -243,9 +275,12 @@ impl<T: Space> Space for Option<T> {
     }
 }
 
-impl<T: Space> Space for std::sync::Arc<T> {
+impl<T: Space> Space for Arc<T> {
     fn space(&self) -> UsedSpace {
+        // Count the inner size and divide by the total number of references to this arc to have a
+        // crude normalisation to not count the inside double
         UsedSpace::stack(size_of::<Self>()).add_child(self.as_ref().space())
+            / (Self::strong_count(self) + Self::weak_count(self))
     }
 }
 
@@ -442,6 +477,7 @@ simple_space!(Ontology);
 simple_space!(GnoSubsumption);
 simple_space!(MassTag);
 simple_space!(SatelliteLabel);
+simple_space!(crate::chemistry::MassMode);
 simple_space!(mzcv::SynonymScope);
 simple_space!(mzcv::ControlledVocabulary);
 simple_space!(crate::system::isize::Charge);

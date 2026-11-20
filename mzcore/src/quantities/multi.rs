@@ -5,6 +5,7 @@ use std::{
 
 use itertools::{Itertools, MinMaxResult};
 use serde::{Deserialize, Serialize};
+use thin_vec::ThinVec;
 
 use crate::{
     chemistry::{AmbiguousLabel, Element, MassOutput, MassOutputType},
@@ -14,7 +15,7 @@ use crate::{
 /// A collection of potentially multiple of the generic type, it is used be able to easily
 /// combine multiple of this multi struct into all possible combinations.
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub struct Multi<M>(Vec<M>);
+pub struct Multi<M>(ThinVec<M>);
 
 impl<M> Multi<M> {
     /// Get the single value if there is only one value, None otherwise
@@ -79,7 +80,7 @@ impl<M> Deref for Multi<M> {
 impl<M: Default> Default for Multi<M> {
     // Default is one empty M to make the cartesian product with a default return useful results
     fn default() -> Self {
-        Self(vec![M::default()])
+        Self(vec![M::default()].into())
     }
 }
 
@@ -306,13 +307,13 @@ where
     M: Add<M, Output = M> + 'a + Clone,
 {
     fn mul_assign(&mut self, rhs: &Self) {
-        let new_data = self
+        self.0 = self
             .0
             .iter()
             .cartesian_product(rhs.0.iter())
             .map(|(a, b)| b.clone() + a.clone())
             .collect();
-        self.0 = new_data;
+        self.0.shrink_to_fit();
     }
 }
 
@@ -321,13 +322,13 @@ where
     M: Add<M, Output = M> + Clone,
 {
     fn mul_assign(&mut self, rhs: Self) {
-        let new_data = self
+        self.0 = self
             .0
             .iter()
             .cartesian_product(rhs.0.iter())
             .map(|(a, b)| b.clone() + a.clone())
             .collect();
-        self.0 = new_data;
+        self.0.shrink_to_fit();
     }
 }
 
@@ -344,18 +345,24 @@ where
 
 impl<M> From<M> for Multi<M> {
     fn from(value: M) -> Self {
-        Self(vec![value])
+        Self(vec![value].into())
     }
 }
 
 impl<M: Clone> From<&M> for Multi<M> {
     fn from(value: &M) -> Self {
-        Self(vec![value.clone()])
+        Self(vec![value.clone()].into())
     }
 }
 
 impl<M> From<Vec<M>> for Multi<M> {
     fn from(value: Vec<M>) -> Self {
+        Self(value.into())
+    }
+}
+
+impl<M> From<ThinVec<M>> for Multi<M> {
+    fn from(value: ThinVec<M>) -> Self {
         Self(value)
     }
 }
@@ -392,6 +399,14 @@ impl<M> FromIterator<M> for Multi<M> {
 
 impl<'a, M: Clone + 'a> FromIterator<&'a M> for Multi<M> {
     fn from_iter<T: IntoIterator<Item = &'a M>>(iter: T) -> Self {
-        Self(iter.into_iter().cloned().collect())
+        let mut s: ThinVec<M> = iter.into_iter().cloned().collect();
+        s.shrink_to_fit();
+        Self(s)
+    }
+}
+
+impl<M: crate::space::Space> crate::space::Space for Multi<M> {
+    fn space(&self) -> crate::space::UsedSpace {
+        self.0.space()
     }
 }

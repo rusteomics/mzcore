@@ -507,3 +507,23 @@ impl std::fmt::Display for Ontology {
         })
     }
 }
+
+impl crate::space::Space for Ontologies {
+    fn space(&self) -> crate::space::UsedSpace {
+        self.unimod.space()
+            + self.psimod.space()
+            + self.gnome.space()
+            + self.xlmod.space()
+            + self.resid.space()
+            + self.custom.space()
+    }
+}
+
+impl<C: CVSource> crate::space::Space for CVIndex<C>
+where
+    C::Structure: crate::space::Space,
+{
+    fn space(&self) -> crate::space::UsedSpace {
+        self.data().space()
+    }
+}

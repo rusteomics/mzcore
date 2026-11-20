@@ -4,6 +4,7 @@ use context_error::*;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use thin_vec::ThinVec;
 
 use crate::{
     chemistry::{DiagnosticIon, MolecularFormula, NeutralLoss},
@@ -104,26 +105,26 @@ pub enum LinkerSpecificity {
     /// A symmetric specificity where both ends have the same specificity.
     Symmetric {
         /// The placement rules for both ends.
-        rules: Vec<PlacementRule>,
+        rules: ThinVec<PlacementRule>,
         /// All stubs that can be left after cleaving or breaking of the cross-link.
-        stubs: Vec<(MolecularFormula, MolecularFormula)>,
+        stubs: ThinVec<(MolecularFormula, MolecularFormula)>,
         /// All possible neutral losses from the intact cross-linker.
-        neutral_losses: Vec<NeutralLoss>,
+        neutral_losses: ThinVec<NeutralLoss>,
         /// All diagnostic ions from the cross-linker
-        diagnostic: Vec<DiagnosticIon>,
+        diagnostic: ThinVec<DiagnosticIon>,
     },
     /// An asymmetric specificity where both ends have a different specificity.
     Asymmetric {
         /// The placement rules for both ends, these can be asymmetric thus are provided for
         /// 'right' and 'left' separately.
-        rules: (Vec<PlacementRule>, Vec<PlacementRule>),
+        rules: (ThinVec<PlacementRule>, ThinVec<PlacementRule>),
         /// All stubs that can be left after cleaving or breaking of the cross-link. The stubs are
         /// specific for right and left in the same orientation as the rules.
-        stubs: Vec<(MolecularFormula, MolecularFormula)>,
+        stubs: ThinVec<(MolecularFormula, MolecularFormula)>,
         /// All possible neutral losses from the intact cross-linker.
-        neutral_losses: Vec<NeutralLoss>,
+        neutral_losses: ThinVec<NeutralLoss>,
         /// All diagnostic ions from the cross-linker
-        diagnostic: Vec<DiagnosticIon>,
+        diagnostic: ThinVec<DiagnosticIon>,
     },
 }
 
@@ -156,7 +157,7 @@ impl ParseJson for LinkerSpecificity {
                 "Symmetric" => {
                     if let Value::Object(mut map) = value {
                         Ok(Self::Symmetric {
-                            rules: Vec::<PlacementRule>::from_json_value(
+                            rules: ThinVec::<PlacementRule>::from_json_value(
                                 map.remove("rules").ok_or_else(|| {
                                     BoxedError::new(
                                         BasicKind::Error,
@@ -171,22 +172,23 @@ impl ParseJson for LinkerSpecificity {
                                     )
                                 })?,
                             )?,
-                            stubs: Vec::<(MolecularFormula, MolecularFormula)>::from_json_value(
-                                map.remove("stubs").ok_or_else(|| {
-                                    BoxedError::new(
-                                        BasicKind::Error,
-                                        "Invalid LinkerSpecificity",
-                                        "The required property 'stubs' is missing",
-                                        Context::default().lines(
-                                            0,
-                                            map.iter()
-                                                .map(|(k, v)| format!("\"{k}\": {v}"))
-                                                .join(","),
-                                        ),
-                                    )
-                                })?,
-                            )?,
-                            neutral_losses: Vec::<NeutralLoss>::from_json_value(
+                            stubs:
+                                ThinVec::<(MolecularFormula, MolecularFormula)>::from_json_value(
+                                    map.remove("stubs").ok_or_else(|| {
+                                        BoxedError::new(
+                                            BasicKind::Error,
+                                            "Invalid LinkerSpecificity",
+                                            "The required property 'stubs' is missing",
+                                            Context::default().lines(
+                                                0,
+                                                map.iter()
+                                                    .map(|(k, v)| format!("\"{k}\": {v}"))
+                                                    .join(","),
+                                            ),
+                                        )
+                                    })?,
+                                )?,
+                            neutral_losses: ThinVec::<NeutralLoss>::from_json_value(
                                 map.remove("neutral_losses").ok_or_else(|| {
                                     BoxedError::new(
                                         BasicKind::Error,
@@ -201,7 +203,7 @@ impl ParseJson for LinkerSpecificity {
                                     )
                                 })?,
                             )?,
-                            diagnostic: Vec::<DiagnosticIon>::from_json_value(
+                            diagnostic: ThinVec::<DiagnosticIon>::from_json_value(
                                 map.remove("diagnostic").ok_or_else(|| {
                                     BoxedError::new(
                                         BasicKind::Error,
@@ -220,17 +222,18 @@ impl ParseJson for LinkerSpecificity {
                     } else if let Value::Array(mut arr) = value {
                         if arr.len() == 3 {
                             let diagnostic =
-                                Vec::<DiagnosticIon>::from_json_value(arr.pop().unwrap())?;
+                                ThinVec::<DiagnosticIon>::from_json_value(arr.pop().unwrap())?;
                             let stubs =
-                                Vec::<(MolecularFormula, MolecularFormula)>::from_json_value(
+                                ThinVec::<(MolecularFormula, MolecularFormula)>::from_json_value(
                                     arr.pop().unwrap(),
                                 )?;
-                            let rules = Vec::<PlacementRule>::from_json_value(arr.pop().unwrap())?;
+                            let rules =
+                                ThinVec::<PlacementRule>::from_json_value(arr.pop().unwrap())?;
 
                             Ok(Self::Symmetric {
                                 rules,
                                 stubs,
-                                neutral_losses: Vec::new(),
+                                neutral_losses: ThinVec::new(),
                                 diagnostic,
                             })
                         } else {
@@ -253,37 +256,39 @@ impl ParseJson for LinkerSpecificity {
                 "Asymmetric" => {
                     if let Value::Object(mut map) = value {
                         Ok(Self::Asymmetric {
-                            rules: <(Vec<PlacementRule>, Vec<PlacementRule>)>::from_json_value(
-                                map.remove("rules").ok_or_else(|| {
-                                    BoxedError::new(
-                                        BasicKind::Error,
-                                        "Invalid LinkerSpecificity",
-                                        "The required property 'rules' is missing",
-                                        Context::default().lines(
-                                            0,
-                                            map.iter()
-                                                .map(|(k, v)| format!("\"{k}\": {v}"))
-                                                .join(","),
-                                        ),
-                                    )
-                                })?,
-                            )?,
-                            stubs: Vec::<(MolecularFormula, MolecularFormula)>::from_json_value(
-                                map.remove("stubs").ok_or_else(|| {
-                                    BoxedError::new(
-                                        BasicKind::Error,
-                                        "Invalid LinkerSpecificity",
-                                        "The required property 'stubs' is missing",
-                                        Context::default().lines(
-                                            0,
-                                            map.iter()
-                                                .map(|(k, v)| format!("\"{k}\": {v}"))
-                                                .join(","),
-                                        ),
-                                    )
-                                })?,
-                            )?,
-                            neutral_losses: Vec::<NeutralLoss>::from_json_value(
+                            rules:
+                                <(ThinVec<PlacementRule>, ThinVec<PlacementRule>)>::from_json_value(
+                                    map.remove("rules").ok_or_else(|| {
+                                        BoxedError::new(
+                                            BasicKind::Error,
+                                            "Invalid LinkerSpecificity",
+                                            "The required property 'rules' is missing",
+                                            Context::default().lines(
+                                                0,
+                                                map.iter()
+                                                    .map(|(k, v)| format!("\"{k}\": {v}"))
+                                                    .join(","),
+                                            ),
+                                        )
+                                    })?,
+                                )?,
+                            stubs:
+                                ThinVec::<(MolecularFormula, MolecularFormula)>::from_json_value(
+                                    map.remove("stubs").ok_or_else(|| {
+                                        BoxedError::new(
+                                            BasicKind::Error,
+                                            "Invalid LinkerSpecificity",
+                                            "The required property 'stubs' is missing",
+                                            Context::default().lines(
+                                                0,
+                                                map.iter()
+                                                    .map(|(k, v)| format!("\"{k}\": {v}"))
+                                                    .join(","),
+                                            ),
+                                        )
+                                    })?,
+                                )?,
+                            neutral_losses: ThinVec::<NeutralLoss>::from_json_value(
                                 map.remove("neutral_losses").ok_or_else(|| {
                                     BoxedError::new(
                                         BasicKind::Error,
@@ -298,7 +303,7 @@ impl ParseJson for LinkerSpecificity {
                                     )
                                 })?,
                             )?,
-                            diagnostic: Vec::<DiagnosticIon>::from_json_value(
+                            diagnostic: ThinVec::<DiagnosticIon>::from_json_value(
                                 map.remove("diagnostic").ok_or_else(|| {
                                     BoxedError::new(
                                         BasicKind::Error,
@@ -317,20 +322,20 @@ impl ParseJson for LinkerSpecificity {
                     } else if let Value::Array(mut arr) = value {
                         if arr.len() == 3 {
                             let diagnostic =
-                                Vec::<DiagnosticIon>::from_json_value(arr.pop().unwrap())?;
+                                ThinVec::<DiagnosticIon>::from_json_value(arr.pop().unwrap())?;
                             let stubs =
-                                Vec::<(MolecularFormula, MolecularFormula)>::from_json_value(
+                                ThinVec::<(MolecularFormula, MolecularFormula)>::from_json_value(
                                     arr.pop().unwrap(),
                                 )?;
                             let rules =
-                                <(Vec<PlacementRule>, Vec<PlacementRule>)>::from_json_value(
+                                <(ThinVec<PlacementRule>, ThinVec<PlacementRule>)>::from_json_value(
                                     arr.pop().unwrap(),
                                 )?;
 
                             Ok(Self::Asymmetric {
                                 rules,
                                 stubs,
-                                neutral_losses: Vec::new(),
+                                neutral_losses: ThinVec::new(),
                                 diagnostic,
                             })
                         } else {
@@ -391,10 +396,11 @@ mod tests {
                     ResiduePosition::Anywhere,
                     ModificationPosition::Sidechain,
                 ),
-            ],
-            stubs: vec![(molecular_formula!(H 2 O 1), molecular_formula!(H 2 O 1))],
-            neutral_losses: vec![NeutralLoss::Gain(2, molecular_formula!(H 2 O 1))],
-            diagnostic: vec![DiagnosticIon(molecular_formula!(H 2 O 1))],
+            ]
+            .into(),
+            stubs: vec![(molecular_formula!(H 2 O 1), molecular_formula!(H 2 O 1))].into(),
+            neutral_losses: vec![NeutralLoss::Gain(2, molecular_formula!(H 2 O 1))].into(),
+            diagnostic: vec![DiagnosticIon(molecular_formula!(H 2 O 1))].into(),
         };
         let current_text =
             serde_json::to_string(&current).expect("Could not serialise linker specificity");

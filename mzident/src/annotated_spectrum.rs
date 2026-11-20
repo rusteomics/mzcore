@@ -121,11 +121,19 @@ impl<Mode: MassOutputMode> PSMMetaData for AnnotatedSpectrum<Mode> {
                     && p.accession == Some(1003203)
             })
             .map_or_else(
-                || SpectrumIds::FileNotKnown(vec![SpectrumId::Index(self.description.index)]),
+                || {
+                    SpectrumIds::FileNotKnown(
+                        vec![SpectrumId::Index(self.description.index)].into(),
+                    )
+                },
                 |rawfile| {
-                    SpectrumIds::FileKnown(vec![(rawfile.value.to_string().into(), vec![
-                        SpectrumId::Index(self.description.index),
-                    ])])
+                    SpectrumIds::FileKnown(
+                        vec![(
+                            rawfile.value.to_string().into(),
+                            vec![SpectrumId::Index(self.description.index)].into(),
+                        )]
+                        .into(),
+                    )
                 },
             )
     }

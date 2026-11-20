@@ -598,6 +598,12 @@ impl BuiltInFragmentationModel {
     }
 }
 
+impl mzcore::space::Space for BuiltInFragmentationModel {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        mzcore::space::UsedSpace::stack(1).set_total::<Self>()
+    }
+}
+
 /// All losses from the base immonium ions. Compiled from the sources below.
 #[doc = include_str!("immonium_losses.md")]
 pub(super) static IMMONIUM_LOSSES: LazyLock<Vec<(Vec<AminoAcid>, Vec<NeutralLoss>)>> =

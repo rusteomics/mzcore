@@ -378,3 +378,9 @@ where
         f64::from(self.found) / f64::from(self.total)
     }
 }
+
+impl<T: mzcore::space::Space> mzcore::space::Space for Recovered<T> {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        (self.found.space() + self.total.space()).set_total::<Self>()
+    }
+}

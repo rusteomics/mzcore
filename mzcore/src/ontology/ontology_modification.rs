@@ -32,18 +32,22 @@ pub(crate) struct OntologyModification {
 #[derive(Debug)]
 pub(crate) enum ModData {
     Mod {
-        specificities: Vec<(Vec<PlacementRule>, Vec<NeutralLoss>, Vec<DiagnosticIon>)>,
+        specificities: ThinVec<(
+            ThinVec<PlacementRule>,
+            ThinVec<NeutralLoss>,
+            ThinVec<DiagnosticIon>,
+        )>,
     },
     Linker {
         length: LinkerLength,
-        specificities: Vec<LinkerSpecificity>,
+        specificities: ThinVec<LinkerSpecificity>,
     },
 }
 
 impl Default for ModData {
     fn default() -> Self {
         Self::Mod {
-            specificities: Vec::new(),
+            specificities: ThinVec::new(),
         }
     }
 }
@@ -158,11 +162,24 @@ impl OntologyModification {
     }
 }
 
-fn simplify_rules(old_rules: &mut Vec<(Vec<PlacementRule>, Vec<NeutralLoss>, Vec<DiagnosticIon>)>) {
-    let mut simplified_rules: Vec<(Vec<PlacementRule>, Vec<NeutralLoss>, Vec<DiagnosticIon>)> =
-        Vec::new();
+fn simplify_rules(
+    old_rules: &mut ThinVec<(
+        ThinVec<PlacementRule>,
+        ThinVec<NeutralLoss>,
+        ThinVec<DiagnosticIon>,
+    )>,
+) {
+    let mut simplified_rules: ThinVec<(
+        ThinVec<PlacementRule>,
+        ThinVec<NeutralLoss>,
+        ThinVec<DiagnosticIon>,
+    )> = ThinVec::new();
     for rule in old_rules.iter() {
-        let rule: (Vec<PlacementRule>, Vec<NeutralLoss>, Vec<DiagnosticIon>) = (
+        let rule: (
+            ThinVec<PlacementRule>,
+            ThinVec<NeutralLoss>,
+            ThinVec<DiagnosticIon>,
+        ) = (
             compress_rules(&rule.0),
             rule.1.iter().unique().sorted().cloned().collect(),
             rule.2.iter().unique().sorted().cloned().collect(),
@@ -188,8 +205,8 @@ fn simplify_rules(old_rules: &mut Vec<(Vec<PlacementRule>, Vec<NeutralLoss>, Vec
     old_rules.extend(simplified_rules);
 }
 
-fn simplify_xl_rules(old_rules: &mut Vec<LinkerSpecificity>) {
-    let mut new_rules = Vec::new();
+fn simplify_xl_rules(old_rules: &mut ThinVec<LinkerSpecificity>) {
+    let mut new_rules = ThinVec::new();
 
     for old_rule in old_rules.iter() {
         let rule = match old_rule {
@@ -266,7 +283,7 @@ fn simplify_xl_rules(old_rules: &mut Vec<LinkerSpecificity>) {
     old_rules.extend_from_slice(&new_rules);
 }
 
-fn combine_rules(rules: &mut Vec<PlacementRule>, additional_rules: &[PlacementRule]) {
+fn combine_rules(rules: &mut ThinVec<PlacementRule>, additional_rules: &[PlacementRule]) {
     for rule in additional_rules {
         let mut pos_found = false;
         for new_position in rules.iter_mut() {
@@ -282,8 +299,8 @@ fn combine_rules(rules: &mut Vec<PlacementRule>, additional_rules: &[PlacementRu
     rules.sort_unstable();
 }
 
-fn compress_rules(rules: &[PlacementRule]) -> Vec<PlacementRule> {
-    let mut new: Vec<PlacementRule> = Vec::new();
+fn compress_rules(rules: &[PlacementRule]) -> ThinVec<PlacementRule> {
+    let mut new: ThinVec<PlacementRule> = ThinVec::new();
     for rule in rules.iter().unique() {
         let mut pos_found = false;
         for new_position in &mut new {
@@ -297,6 +314,7 @@ fn compress_rules(rules: &[PlacementRule]) -> Vec<PlacementRule> {
         }
     }
     new.sort_unstable();
+    new.shrink_to_fit();
     new
 }
 

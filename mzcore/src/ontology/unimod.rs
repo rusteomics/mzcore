@@ -345,7 +345,7 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, BoxedError<'static, CV
         data: ModData::Mod {
             specificities: rules
                 .into_iter()
-                .map(|(r, l)| (vec![r], l, diagnostics.clone()))
+                .map(|(r, l)| (vec![r].into(), l.into(), diagnostics.clone().into()))
                 .collect(),
         },
         obsolete: false,

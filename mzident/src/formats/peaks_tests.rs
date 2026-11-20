@@ -137,7 +137,7 @@ fn peaks_11_custom_modification() {
             BufReader::new(DATA_11_CUSTOM_MODIFICATION.as_bytes()),
             &mzcore::ontology::Ontologies::init_static().with_custom([std::sync::Arc::new(
                 SimpleModificationInner::Database {
-                    specificities: Vec::new(),
+                    specificities: ThinVec::new(),
                     formula: molecular_formula!(O 1),
                     id: ModificationId::new(
                         mzcore::ontology::Ontology::Custom,

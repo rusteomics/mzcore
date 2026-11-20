@@ -187,7 +187,7 @@ impl PSMMetaData for ProteoscapePSM {
     }
 
     fn scans(&self) -> SpectrumIds {
-        SpectrumIds::FileNotKnown(vec![SpectrumId::Number(self.scan_number)]) // TODO: timsTOF so works differently maybe
+        SpectrumIds::FileNotKnown(vec![SpectrumId::Number(self.scan_number)].into()) // TODO: timsTOF so works differently maybe
     }
 
     fn experimental_mz(&self) -> Option<MassOverCharge> {

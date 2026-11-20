@@ -196,6 +196,12 @@ impl<T, const DEPTH: u16> std::ops::IndexMut<[usize; 2]> for DiagonalArray<T, DE
     }
 }
 
+impl<T: mzcore::space::Space, const DEPTH: u16> mzcore::space::Space for DiagonalArray<T, DEPTH> {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        self.len.space() + self.data.space()
+    }
+}
+
 #[cfg(test)]
 #[expect(clippy::missing_panics_doc)]
 mod tests {

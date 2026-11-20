@@ -360,10 +360,10 @@ impl CVSource for PsiMod {
             }
 
             if origins.len() <= 1 {
-                let mut rules = Vec::new();
+                let mut rules = ThinVec::new();
                 if let Some(origin) = origins.first() {
                     match parse_rule(origin, term) {
-                        Ok(rule) => rules.push((vec![rule], Vec::new(), Vec::new())),
+                        Ok(rule) => rules.push((vec![rule].into(), ThinVec::new(), ThinVec::new())),
                         Err(err) => {
                             combine_error(&mut errors, err);
                             continue;
@@ -378,9 +378,10 @@ impl CVSource for PsiMod {
                             } else {
                                 ModificationPosition::Terminal
                             },
-                        )],
-                        Vec::new(),
-                        Vec::new(),
+                        )]
+                        .into(),
+                        ThinVec::new(),
+                        ThinVec::new(),
                     ));
                 }
                 modification.data = ModData::Mod {
@@ -404,11 +405,12 @@ impl CVSource for PsiMod {
                 modification.data = ModData::Linker {
                     length: crate::sequence::LinkerLength::Unknown,
                     specificities: vec![LinkerSpecificity::Asymmetric {
-                        rules: (vec![left], vec![right]),
-                        stubs: Vec::new(),
-                        neutral_losses: Vec::new(),
-                        diagnostic: Vec::new(),
-                    }],
+                        rules: (vec![left].into(), vec![right].into()),
+                        stubs: ThinVec::new(),
+                        neutral_losses: ThinVec::new(),
+                        diagnostic: ThinVec::new(),
+                    }]
+                    .into(),
                 };
             } else {
                 combine_error(

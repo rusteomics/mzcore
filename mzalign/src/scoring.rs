@@ -52,6 +52,12 @@ impl std::fmt::Display for PairMode {
     }
 }
 
+impl mzcore::space::Space for PairMode {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        mzcore::space::UsedSpace::stack(1)
+    }
+}
+
 /// The scoring parameters for the mass alignment.
 ///
 /// Design parameters for the scoring systems are as follows:
@@ -171,4 +177,20 @@ pub(super) mod matrices {
     /// PAM250 matrix
     pub const PAM250: &[[i8; AminoAcid::TOTAL_NUMBER]; AminoAcid::TOTAL_NUMBER] =
         include!("matrices/pam250.txt");
+}
+
+impl mzcore::space::Space for AlignScoring<'_> {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        self.mismatch.space()
+            + self.mass_mismatch.space()
+            + self.mass_base.space()
+            + self.rotated.space()
+            + self.isobaric.space()
+            + self.gap_start.space()
+            + self.gap_extend.space()
+            + self.matrix.space()
+            + self.tolerance.space()
+            + self.mass_mode.space()
+            + self.pair.space()
+    }
 }

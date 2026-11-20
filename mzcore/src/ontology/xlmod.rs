@@ -181,23 +181,23 @@ impl CVSource for XlMod {
                                             specificities: vec![
                                                 if properties.origins.1.is_empty() {
                                                     LinkerSpecificity::Symmetric {
-                                                        rules: properties.origins.0,
-                                                        stubs: properties.stubs,
-                                                        neutral_losses: properties.neutral_losses,
-                                                        diagnostic: properties.diagnostic_ions,
+                                                        rules: properties.origins.0.into(),
+                                                        stubs: properties.stubs.into(),
+                                                        neutral_losses: properties.neutral_losses.into(),
+                                                        diagnostic: properties.diagnostic_ions.into(),
                                                     }
                                                 } else {
                                                     LinkerSpecificity::Asymmetric {
                                                         rules: (
-                                                            properties.origins.0,
-                                                            properties.origins.1,
+                                                            properties.origins.0.into(),
+                                                            properties.origins.1.into(),
                                                         ),
-                                                        stubs: properties.stubs,
-                                                        neutral_losses: properties.neutral_losses,
-                                                        diagnostic: properties.diagnostic_ions,
+                                                        stubs: properties.stubs.into(),
+                                                        neutral_losses: properties.neutral_losses.into(),
+                                                        diagnostic: properties.diagnostic_ions.into(),
                                                     }
                                                 },
-                                            ],
+                                            ].into(),
                                         },
                                         parents: ThinVec::default(),
                                     };
@@ -216,10 +216,10 @@ impl CVSource for XlMod {
                                         id: mzcv::AccessionCode::Numeric(id),
                                         data: ModData::Mod {
                                             specificities: vec![(
-                                                properties.origins.0,
-                                                properties.neutral_losses,
-                                                properties.diagnostic_ions,
-                                            )],
+                                                properties.origins.0.into(),
+                                                properties.neutral_losses.into(),
+                                                properties.diagnostic_ions.into(),
+                                            )].into(),
                                         },
                                         parents: ThinVec::default(),
                                     };

@@ -514,10 +514,13 @@ impl PSMMetaData for MaxQuantPSM {
                 )
             },
             |raw_file| {
-                SpectrumIds::FileKnown(vec![(
-                    raw_file.clone(),
-                    self.scan_number.iter().copied().map(SpectrumId::Number).collect(),
-                )])
+                SpectrumIds::FileKnown(
+                    vec![(
+                        raw_file.clone(),
+                        self.scan_number.iter().copied().map(SpectrumId::Number).collect(),
+                    )]
+                    .into(),
+                )
             },
         )
     }

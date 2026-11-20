@@ -205,7 +205,7 @@ fn fragpipe_v21_manual() {
         BufReader::new(DATA_FRAGPIPE_V21_MANUAL.as_bytes()),
         &mzcore::ontology::Ontologies::init_static().with_custom([std::sync::Arc::new(
             SimpleModificationInner::Database {
-                specificities: Vec::new(),
+                specificities: ThinVec::new(),
                 formula: MolecularFormula::default(),
                 id: ModificationId::new(
                     mzcore::ontology::Ontology::Custom,

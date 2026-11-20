@@ -638,14 +638,17 @@ fn custom_database() -> Ontologies {
                     vec![AminoAcid::Lysine].into(),
                     ResiduePosition::Anywhere,
                     ModificationPosition::Sidechain,
-                )],
+                )]
+                .into(),
                 stubs: vec![(
                     molecular_formula!(C 3 O 2 H 1 N -1),
                     molecular_formula!(C 3 O 3 H 1 N -1 S 1),
-                )],
-                neutral_losses: Vec::new(),
-                diagnostic: Vec::new(),
-            }],
+                )]
+                .into(),
+                neutral_losses: ThinVec::new(),
+                diagnostic: ThinVec::new(),
+            }]
+            .into(),
             formula: molecular_formula!(C 6 O 5 H 2 N -2 S 1),
             id: ModificationId::new(
                 Ontology::Custom,
@@ -664,11 +667,13 @@ fn custom_database() -> Ontologies {
                     vec![AminoAcid::Cysteine].into(),
                     ResiduePosition::Anywhere,
                     ModificationPosition::Sidechain,
-                )],
-                stubs: vec![(molecular_formula!(H - 1), molecular_formula!(H - 1))],
-                neutral_losses: Vec::new(),
-                diagnostic: Vec::new(),
-            }],
+                )]
+                .into(),
+                stubs: vec![(molecular_formula!(H - 1), molecular_formula!(H - 1))].into(),
+                neutral_losses: ThinVec::new(),
+                diagnostic: ThinVec::new(),
+            }]
+            .into(),
             formula: molecular_formula!(C 6 O 5 H 2 N -2 S 1),
             id: ModificationId::new(
                 Ontology::Custom,

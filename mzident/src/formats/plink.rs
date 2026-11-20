@@ -628,14 +628,14 @@ impl PSMMetaData for PLinkPSM {
 
     fn scans(&self) -> SpectrumIds {
         self.scan_number.map_or_else(
-            || SpectrumIds::FileNotKnown(vec![SpectrumId::Native(self.title.to_string())]),
+            || SpectrumIds::FileNotKnown(vec![SpectrumId::Native(self.title.to_string())].into()),
             |scan_number| {
                 self.raw_file.clone().map_or_else(
-                    || SpectrumIds::FileNotKnown(vec![SpectrumId::Number(scan_number)]),
+                    || SpectrumIds::FileNotKnown(vec![SpectrumId::Number(scan_number)].into()),
                     |raw_file| {
-                        SpectrumIds::FileKnown(vec![(raw_file, vec![SpectrumId::Number(
-                            scan_number,
-                        )])])
+                        SpectrumIds::FileKnown(
+                            vec![(raw_file, vec![SpectrumId::Number(scan_number)].into())].into(),
+                        )
                     },
                 )
             },

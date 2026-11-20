@@ -104,6 +104,12 @@ impl Default for AlignType {
     }
 }
 
+impl mzcore::space::Space for AlignType {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        self.left.space() + self.right.space()
+    }
+}
+
 /// The alignment specification for a single side
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum Side {
@@ -196,5 +202,15 @@ impl FromStr for Side {
             "11" => Ok(Self::Specified { a: true, b: true }),
             _ => Err(()),
         }
+    }
+}
+
+impl mzcore::space::Space for Side {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        (match self {
+            Self::EitherGlobal => mzcore::space::UsedSpace::stack(1),
+            Self::Specified { a, b } => a.space() + b.space(),
+        })
+        .set_total::<Self>()
     }
 }

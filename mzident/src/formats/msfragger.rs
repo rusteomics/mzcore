@@ -591,8 +591,10 @@ impl PSMMetaData for MSFraggerPSM {
 
     fn scans(&self) -> SpectrumIds {
         self.raw_file.clone().map_or_else(
-            || SpectrumIds::FileNotKnown(vec![self.scan.clone()]),
-            |raw_file| SpectrumIds::FileKnown(vec![(raw_file, vec![self.scan.clone()])]),
+            || SpectrumIds::FileNotKnown(vec![self.scan.clone()].into()),
+            |raw_file| {
+                SpectrumIds::FileKnown(vec![(raw_file, vec![self.scan.clone()].into())].into())
+            },
         )
     }
 
